@@ -6,8 +6,6 @@ working?". `jip reach <host>` traces a single path end-to-end. `jip who`
 shows who is talking to whom, with real byte counters and RTT from the
 kernel.
 
-![demo](docs/demo.gif)
-
 ## Install
 
 ```sh
