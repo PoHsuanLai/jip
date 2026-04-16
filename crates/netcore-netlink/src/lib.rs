@@ -1,8 +1,7 @@
 //! netlink backend for netcore.
 //!
 //! Implements [`InventoryRaw`] and [`Inventory`] by talking directly to the
-//! kernel over rtnetlink. This is the preferred production backend — no
-//! parsing of `ip` output, no shell-outs, no busybox issues.
+//! kernel over rtnetlink.
 //!
 //! Runtime: a `current_thread` tokio runtime is built on demand for each
 //! public call. Building takes ~1ms and each method returns <100 total rows
@@ -30,12 +29,14 @@ use netcore::connection::{
 };
 use netcore::link::{
     Addr, AddrScope, Lifetime, Link, LinkFlags, LinkKind, LinkMode, MacAddr, NeighState, Neighbor,
-    OperState, Route as NcRoute, RouteDst, RouteScope as NcRouteScope, Socket,
+    OperState, Route as NcRoute, RouteDst, RouteScope as NcRouteScope, Socket, TcpState,
 };
 use netcore::path::Egress;
-use netcore::service::{Flow, Service};
+use netcore::service::{BindScope, Exposure, Flow, Service};
 use netcore::traits::{Inventory, InventoryRaw};
 use netcore::{Error, Result};
+
+mod sockdiag;
 
 /// Production netlink backend. Holds no state; each call builds a new
 /// current_thread tokio runtime (~1ms) and a fresh netlink socket.
@@ -163,7 +164,7 @@ impl InventoryRaw for NetlinkBackend {
         })
     }
 
-    fn sockets(&self) -> Result<Vec<Socket>> { Ok(vec![]) }
+    fn sockets(&self) -> Result<Vec<Socket>> { sockdiag::dump_all() }
 }
 
 impl Inventory for NetlinkBackend {
@@ -203,9 +204,48 @@ impl Inventory for NetlinkBackend {
         Ok(out)
     }
 
-    fn services(&self) -> Result<Vec<Service>> { Ok(vec![]) }
+    fn services(&self) -> Result<Vec<Service>> {
+        use netcore::link::L4Proto;
+        let sockets = self.sockets()?;
+        let mut out = Vec::with_capacity(sockets.len() / 2);
+        for s in sockets {
+            // TCP listeners are explicit. UDP "sockets" come back as Close; treat
+            // any UDP socket with no peer as a listener (UDP has no Listen state).
+            let is_listener = match s.proto {
+                L4Proto::Tcp => matches!(s.state, TcpState::Listen),
+                L4Proto::Udp => s.remote.is_none(),
+            };
+            if !is_listener { continue; }
+            out.push(Service {
+                port: s.local.port(),
+                proto: s.proto,
+                bind: bind_scope_for(&s.local),
+                process: s.process,
+                // No firewall backend yet; leave verdict open.
+                exposure: Exposure::Unknown,
+            });
+        }
+        Ok(out)
+    }
 
-    fn flows(&self) -> Result<Vec<Flow>> { Ok(vec![]) }
+    fn flows(&self) -> Result<Vec<Flow>> {
+        let sockets = self.sockets()?;
+        let mut out = Vec::with_capacity(sockets.len() / 2);
+        for s in sockets {
+            if !matches!(s.state, TcpState::Established) { continue; }
+            let Some(remote) = s.remote else { continue };
+            out.push(Flow {
+                proto: s.proto,
+                local: s.local,
+                remote,
+                state: s.state,
+                process: s.process,
+                bytes_in: 0,
+                bytes_out: 0,
+            });
+        }
+        Ok(out)
+    }
 
     fn egress_for(&self, dst: IpAddr) -> Result<Egress> {
         let links = self.links()?;
@@ -286,6 +326,21 @@ fn unreachable_egress(dst: IpAddr) -> Egress {
         family_used: Family::of(dst),
         family_unreachable: vec![Family::of(dst)],
         uid_scoped: false,
+    }
+}
+
+fn bind_scope_for(local: &std::net::SocketAddr) -> BindScope {
+    let ip = local.ip();
+    let is_unspecified = match ip {
+        IpAddr::V4(v4) => v4.is_unspecified(),
+        IpAddr::V6(v6) => v6.is_unspecified(),
+    };
+    if is_unspecified {
+        BindScope::AnyAddress
+    } else if ip.is_loopback() {
+        BindScope::Loopback
+    } else {
+        BindScope::SpecificAddress(ip)
     }
 }
 
@@ -669,5 +724,41 @@ mod live_tests {
             .egress_for(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)))
             .expect("egress 127.0.0.1");
         assert_eq!(eg.iface, "lo");
+    }
+
+    #[test]
+    fn sockets_dump_returns_something() {
+        let b = NetlinkBackend::new();
+        let socks = b.sockets().expect("sock_diag dump");
+        // Any live Linux box has at least one TCP or UDP socket open
+        // (systemd-resolved on :53, sshd, a getty, etc.).
+        assert!(!socks.is_empty(), "no sockets at all — kernel returning empty dump?");
+    }
+
+    #[test]
+    fn services_includes_a_listener() {
+        use netcore::link::TcpState;
+        let b = NetlinkBackend::new();
+        let services = b.services().expect("services");
+        // Don't hardcode port 53 — CI might not run systemd-resolved.
+        // Just confirm the filter produced *some* listener and didn't
+        // swallow everything.
+        let socks = b.sockets().unwrap();
+        let listener_count = socks.iter().filter(|s| matches!(s.state, TcpState::Listen)).count();
+        if listener_count > 0 {
+            assert!(!services.is_empty(), "had {listener_count} listeners, 0 services");
+        }
+    }
+
+    #[test]
+    fn flows_are_established_only() {
+        use netcore::link::TcpState;
+        let b = NetlinkBackend::new();
+        let flows = b.flows().expect("flows");
+        for f in &flows {
+            assert!(matches!(f.state, TcpState::Established), "non-Established flow");
+            // Established flows must have a remote peer.
+            assert!(!f.remote.ip().is_unspecified());
+        }
     }
 }
