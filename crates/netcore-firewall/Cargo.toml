@@ -1,0 +1,14 @@
+[package]
+name = "netcore-firewall"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Firewall backend for netcore: nft -j list ruleset → FirewallVerdict."
+
+[dependencies]
+netcore = { path = "../netcore" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }

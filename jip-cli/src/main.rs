@@ -8,8 +8,10 @@ use clap::{Parser, Subcommand};
 use netcore::connection::{Connection, ConnectionId};
 use netcore::diag::CheckScope;
 use netcore::path::Target;
-use netcore::traits::{Actions, Diagnostician, Inventory, InventoryRaw};
+use netcore::service::{Exposure, Service};
+use netcore::traits::{Actions, Diagnostician, Firewall, Inventory, InventoryRaw};
 use netcore_diag::DiagApp;
+use netcore_firewall::NftBackend;
 use netcore_netlink::NetlinkBackend;
 use netcore_nm::NmBackend;
 use netcore_probe::ProbeBackend;
@@ -79,6 +81,10 @@ enum Cmd {
         #[command(subcommand)]
         what: RawKind,
     },
+    /// List listening services with exposure (firewall-aware).
+    Listen,
+    /// Show established flows (which processes are talking to whom).
+    Who,
     /// Activate an NM profile (equivalent to `nmcli con up`).
     Use {
         /// Profile name or UUID.
@@ -127,6 +133,8 @@ fn run(cli: Cli) -> anyhow::Result<ExitCode> {
         Some(Cmd::Check) => check(json),
         Some(Cmd::Reach { target }) => reach(&target, json),
         Some(Cmd::Raw { what }) => raw(what, json),
+        Some(Cmd::Listen) => listen(json),
+        Some(Cmd::Who) => who(json),
         Some(Cmd::Use { profile }) => nm_action(ActionKind::Prefer, &profile),
         Some(Cmd::Reconnect { profile }) => nm_action(ActionKind::Reconnect, &profile),
         Some(Cmd::Forget { profile }) => nm_action(ActionKind::Forget, &profile),
@@ -172,6 +180,41 @@ fn enrich_with_nm_profiles(conns: &mut [Connection]) {
         if let Some(p) = by_iface.get(&c.link.name) {
             c.profile = Some(p.clone());
         }
+    }
+}
+
+fn listen(json: bool) -> anyhow::Result<ExitCode> {
+    let inv = NetlinkBackend::new();
+    let mut services = inv.services()?;
+    enrich_with_firewall(&mut services);
+    if json {
+        println!("{}", serde_json::to_string_pretty(&services)?);
+    } else {
+        render::listen::listen(&services);
+    }
+    Ok(ExitCode::SUCCESS)
+}
+
+fn who(json: bool) -> anyhow::Result<ExitCode> {
+    let inv = NetlinkBackend::new();
+    let flows = inv.flows()?;
+    if json {
+        println!("{}", serde_json::to_string_pretty(&flows)?);
+    } else {
+        render::who::who(&flows);
+    }
+    Ok(ExitCode::SUCCESS)
+}
+
+/// Populate each service's [`Exposure`] from the current nftables ruleset.
+/// No-op (leaves `Exposure::Unknown`) when `nft` isn't usable — root-only,
+/// and the firewall backend itself decides whether to surface any verdict.
+fn enrich_with_firewall(services: &mut [Service]) {
+    let fw = NftBackend::new();
+    for s in services {
+        if !matches!(s.exposure, Exposure::Unknown) { continue; }
+        let Ok(verdict) = fw.verdict_for_inbound(s.port, s.proto) else { continue };
+        s.exposure = Exposure::from_scope_and_verdict(&s.bind, verdict);
     }
 }
 

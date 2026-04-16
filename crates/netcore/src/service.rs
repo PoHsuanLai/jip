@@ -8,6 +8,7 @@ use std::net::{IpAddr, SocketAddr};
 
 use serde::{Deserialize, Serialize};
 
+use crate::diag::FirewallVerdict;
 use crate::link::{L4Proto, TcpState};
 use crate::process::ProcessInfo;
 
@@ -29,7 +30,7 @@ pub struct Service {
 /// `net.ipv6.bindv6only` sysctl is set — [`BindScope::AnyAddress`] is the
 /// right variant in that dual-stack case.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[serde(tag = "type", content = "value", rename_all = "snake_case")]
 pub enum BindScope {
     AnyAddress,
     Loopback,
@@ -51,6 +52,25 @@ pub enum Exposure {
     Exposed,
     /// Firewall state unknown (no [`Firewall`](crate::Firewall) backend).
     Unknown,
+}
+
+impl Exposure {
+    /// Combine a [`BindScope`] with a [`FirewallVerdict`] into an [`Exposure`].
+    ///
+    /// Loopback-bound services are always `LocalOnly` regardless of firewall.
+    /// A specific-address bind on a non-loopback address is treated like
+    /// any-address for firewall purposes (the firewall still governs WAN).
+    pub fn from_scope_and_verdict(bind: &BindScope, verdict: FirewallVerdict) -> Self {
+        match bind {
+            BindScope::Loopback => Exposure::LocalOnly,
+            BindScope::SpecificAddress(ip) if ip.is_loopback() => Exposure::LocalOnly,
+            _ => match verdict {
+                FirewallVerdict::Allow => Exposure::Exposed,
+                FirewallVerdict::Drop | FirewallVerdict::Reject => Exposure::LanOnly,
+                FirewallVerdict::NoMatch | FirewallVerdict::Unknown => Exposure::Unknown,
+            },
+        }
+    }
 }
 
 /// An established or in-flight connection to/from this host.

@@ -644,6 +644,7 @@ dependencies = [
  "clap",
  "netcore",
  "netcore-diag",
+ "netcore-firewall",
  "netcore-netlink",
  "netcore-nm",
  "netcore-probe",
@@ -733,6 +734,16 @@ version = "0.1.0"
 dependencies = [
  "netcore",
  "url",
+]
+
+[[package]]
+name = "netcore-firewall"
+version = "0.1.0"
+dependencies = [
+ "netcore",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
 ]
 
 [[package]]

@@ -3,6 +3,7 @@ resolver = "3"
 members = [
     "crates/netcore",
     "crates/netcore-diag",
+    "crates/netcore-firewall",
     "crates/netcore-netlink",
     "crates/netcore-nm",
     "crates/netcore-probe",

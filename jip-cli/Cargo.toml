@@ -16,6 +16,7 @@ netcore = { path = "../crates/netcore" }
 netcore-diag = { path = "../crates/netcore-diag" }
 netcore-netlink = { path = "../crates/netcore-netlink" }
 netcore-nm = { path = "../crates/netcore-nm" }
+netcore-firewall = { path = "../crates/netcore-firewall" }
 netcore-resolver = { path = "../crates/netcore-resolver" }
 netcore-probe = { path = "../crates/netcore-probe" }
 clap = { version = "4", features = ["derive", "wrap_help"] }
