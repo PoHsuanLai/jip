@@ -1,0 +1,15 @@
+[package]
+name = "netcore-resolver"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Resolver backend for netcore: systemd-resolved D-Bus + libc getaddrinfo fallback."
+
+[dependencies]
+netcore = { path = "../netcore" }
+zbus = { version = "5", default-features = false, features = ["tokio"] }
+tokio = { version = "1", default-features = false, features = ["rt", "macros", "time"] }
+serde = { workspace = true }
+thiserror = { workspace = true }
