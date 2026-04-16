@@ -53,12 +53,16 @@ struct Cli {
 /// Family filter selected by `-4` / `-6` / neither.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum FamilyFilter {
+    /// Show both IPv4 and IPv6 columns.
     All,
+    /// Show IPv4 only (`-4`).
     V4Only,
+    /// Show IPv6 only (`-6`).
     V6Only,
 }
 
 impl FamilyFilter {
+    /// Construct the filter from the `-4` / `-6` CLI flags.
     fn from_flags(v4: bool, v6: bool) -> Self {
         match (v4, v6) {
             (true, _) => Self::V4Only,
@@ -298,11 +302,13 @@ fn build_diag() -> DiagApp {
     )
 }
 
-/// Parse a user-supplied target string into a `Target`. Accepts:
-///   - "1.1.1.1", "::1"                       → Ip{port: None}
-///   - "1.1.1.1:443", "[::1]:22"              → Ip{port: Some}
-///   - "github.com", "github.com:22"          → Host
-///   - "https://github.com/", "http://..."    → Url
+/// Parse a user-supplied target string into a [`Target`].
+///
+/// Accepted forms:
+/// - `"1.1.1.1"`, `"::1"` — bare IP address
+/// - `"1.1.1.1:443"`, `"[::1]:22"` — IP with port
+/// - `"github.com"`, `"github.com:22"` — hostname with optional port
+/// - `"https://github.com/"`, `"http://..."` — full URL
 fn parse_target(s: &str) -> anyhow::Result<Target> {
     if s.starts_with("http://") || s.starts_with("https://") {
         return Ok(Target::Url { url: s.to_string() });

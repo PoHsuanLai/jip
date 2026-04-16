@@ -6,6 +6,8 @@ use netcore::path::{Path, Verdict};
 
 use crate::theme;
 
+/// Print a `jip reach` report: target, DNS resolution, egress, probe
+/// results, and final verdict.
 pub fn print(path: &Path) {
     // The leading stage labels (target:/dns:/egress:/probes:/verdict:) are
     // signposts, not content — dim them so the values stand out.

@@ -30,11 +30,14 @@ use netcore::traits::Reachability;
 
 mod icmp;
 
+/// Reachability backend: ICMP ping, TCP connect, TLS handshake, HTTP HEAD,
+/// and traceroute. All methods are synchronous.
 pub struct ProbeBackend {
     caps: ProbeCapabilities,
 }
 
 impl ProbeBackend {
+    /// Detect available capabilities and return a new backend.
     pub fn new() -> Self {
         Self { caps: detect_capabilities() }
     }

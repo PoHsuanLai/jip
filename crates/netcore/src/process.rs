@@ -7,15 +7,22 @@
 
 use serde::{Deserialize, Serialize};
 
+/// A reference to a specific process by PID and command name.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ProcessRef {
+    /// Kernel process ID.
     pub pid: u32,
+    /// Short command name from `/proc/<pid>/comm`.
     pub comm: String,
 }
 
+/// Process ownership for a socket — three-way split so the diagnostician
+/// can surface permission failures as one aggregate finding rather than N
+/// question marks.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum ProcessInfo {
+    /// We successfully resolved the owning process.
     Known(ProcessRef),
     /// We aren't privileged enough to read this socket's owner. Emit one
     /// aggregate finding, not one per row.

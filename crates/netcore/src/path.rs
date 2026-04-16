@@ -12,14 +12,21 @@ use crate::connection::{ConnectionId, Family};
 use crate::diag::Finding;
 use crate::dns::{DnsError, DnsResolution};
 
+/// End-to-end path probe result: target resolution, egress selection, probe
+/// outcomes, and the final verdict.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Path {
+    /// The target that was probed.
     pub target: Target,
     /// `None` when the target was given as an IP literal.
     pub resolution: Option<DnsResolution>,
+    /// Which interface and source address carry traffic to the target.
     pub egress: Egress,
+    /// All probe results collected for this path.
     pub probes: ProbeResults,
+    /// The overall reachability verdict.
     pub verdict: Verdict,
+    /// Diagnostic findings produced while tracing the path.
     pub findings: Vec<Finding>,
 }
 
@@ -50,10 +57,15 @@ pub enum ProbeStrategy {
 /// `ip route get`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Egress {
+    /// The connection that owns the egress interface.
     pub connection_id: ConnectionId,
+    /// Kernel interface name (e.g. `"eth0"`).
     pub iface: String,
+    /// Preferred source address selected by the kernel.
     pub src: IpAddr,
+    /// Next-hop gateway, when the destination is not directly connected.
     pub gateway: Option<IpAddr>,
+    /// Address family used for the route lookup.
     pub family_used: Family,
     /// Families for which the kernel said "Network is unreachable" — e.g. V6
     /// on an IPv4-only upstream.
@@ -63,23 +75,31 @@ pub struct Egress {
     pub uid_scoped: bool,
 }
 
+/// All probe results collected for a single path trace.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProbeResults {
+    /// Which probe strategy was selected for this target.
     pub strategy: ProbeStrategy,
     /// ICMP to the gateway — cheap, almost always run.
     pub gateway_ping: Option<PingResult>,
     /// ICMP to the target — may be filtered, so not authoritative.
     pub target_ping: Option<PingResult>,
+    /// TCP connect probe result.
     pub tcp_connect: Option<TcpProbeResult>,
+    /// TLS handshake probe result.
     pub tls_handshake: Option<TlsProbeResult>,
+    /// HTTP HEAD probe result.
     pub http_head: Option<HttpProbeResult>,
     /// Traceroute. Lazy: only populated on failure or with `--trace`.
     pub trace: Option<Vec<Hop>>,
 }
 
+/// Result of an ICMP echo probe.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PingResult {
+    /// Number of echo requests sent.
     pub sent: u32,
+    /// Number of echo replies received.
     pub received: u32,
     pub rtt_min: Option<Duration>,
     pub rtt_avg: Option<Duration>,
@@ -87,6 +107,7 @@ pub struct PingResult {
 }
 
 impl PingResult {
+    /// Compute packet loss as a percentage (0.0–100.0).
     pub fn loss_pct(&self) -> f32 {
         if self.sent == 0 {
             return 0.0;
@@ -96,36 +117,57 @@ impl PingResult {
     }
 }
 
+/// Result of a TCP connect probe.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TcpProbeResult {
+    /// The target socket address.
     pub addr: SocketAddr,
+    /// Whether the three-way handshake completed.
     pub connected: bool,
+    /// Time from start to connection or failure.
     pub took: Duration,
+    /// Human-readable error string when `connected` is false.
     pub error: Option<String>,
 }
 
+/// Result of a TLS handshake probe.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TlsProbeResult {
+    /// The target socket address.
     pub peer: SocketAddr,
+    /// The SNI hostname presented.
     pub sni: String,
+    /// Whether the handshake completed with a valid certificate chain.
     pub negotiated: bool,
+    /// Time from start to handshake completion or failure.
     pub took: Duration,
+    /// Human-readable error string when `negotiated` is false.
     pub error: Option<String>,
 }
 
+/// Result of an HTTP HEAD probe.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct HttpProbeResult {
+    /// The URL that was probed.
     pub url: String,
+    /// HTTP response status code, when a response was received.
     pub status: Option<u16>,
+    /// Time from request start to response or failure.
     pub took: Duration,
+    /// Human-readable error string on failure.
     pub error: Option<String>,
 }
 
+/// A single traceroute hop.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Hop {
+    /// TTL value for this hop.
     pub ttl: u8,
+    /// IP address of the responding router, `None` on timeout.
     pub ip: Option<IpAddr>,
+    /// Round-trip time to this hop, `None` on timeout.
     pub rtt: Option<Duration>,
+    /// Reverse-DNS hostname, when available.
     pub hostname: Option<String>,
 }
 

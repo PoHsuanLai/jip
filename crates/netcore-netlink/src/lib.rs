@@ -44,6 +44,8 @@ mod wifi;
 pub struct NetlinkBackend;
 
 impl NetlinkBackend {
+    /// Create a new `NetlinkBackend`. No connection is opened until a method
+    /// is called.
     pub fn new() -> Self { Self }
 
     fn block_on<F, T>(fut: F) -> Result<T>

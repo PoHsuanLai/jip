@@ -76,6 +76,9 @@ enum RuleVerdict {
 }
 
 impl NftBackend {
+    /// Load the nftables ruleset. If `nft` is unavailable or returns an error,
+    /// the backend starts in the `Unavailable` state and every verdict is
+    /// `Unknown`.
     pub fn new() -> Self {
         let state = match load_ruleset() {
             Ok(r) => State::Ready(r),

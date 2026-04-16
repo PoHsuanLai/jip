@@ -15,6 +15,8 @@ use netcore::link::{AddrScope, LinkKind, NeighState, OperState};
 use crate::FamilyFilter;
 use crate::theme;
 
+/// Print the default `jip` overview: one row per connection plus a health
+/// summary line. Pass `all = true` to suppress the default visibility filter.
 pub fn overview(conns: &[Connection], health: &Health, all: bool, family: FamilyFilter) {
     let visible: Vec<&Connection> = conns.iter().filter(|c| all || keep_default(c)).collect();
 

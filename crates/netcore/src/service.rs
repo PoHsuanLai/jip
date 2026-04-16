@@ -15,6 +15,7 @@ use crate::process::ProcessInfo;
 /// Something listening for inbound connections.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Service {
+    /// Local port the socket is listening on.
     pub port: u16,
     pub proto: L4Proto,
     pub bind: BindScope,
@@ -41,6 +42,7 @@ pub enum BindScope {
     SpecificAddress(IpAddr),
 }
 
+/// How widely a listening service is reachable.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Exposure {
@@ -77,11 +79,15 @@ impl Exposure {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Flow {
     pub proto: L4Proto,
+    /// Local socket address.
     pub local: SocketAddr,
+    /// Remote peer socket address.
     pub remote: SocketAddr,
     pub state: TcpState,
     pub process: ProcessInfo,
+    /// Bytes received on this flow.
     pub bytes_in: u64,
+    /// Bytes sent on this flow.
     pub bytes_out: u64,
     /// Smoothed round-trip time in microseconds, when the kernel has one
     /// (TCP only, and only once the connection has carried data).

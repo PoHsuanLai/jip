@@ -5,6 +5,8 @@ use netcore::diag::{Finding, Health, Layer, Remedy, Severity};
 
 use crate::theme;
 
+/// Print a `jip check` report: overall status line followed by findings
+/// grouped by [`Layer`] in bottom-up order.
 pub fn print(health: &Health) {
     let (state_label, state_style, findings): (&str, anstyle::Style, &[Finding]) = match health {
         Health::Ok => ("OK", theme::ok(), &[]),

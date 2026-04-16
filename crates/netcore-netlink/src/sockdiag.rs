@@ -46,17 +46,22 @@ use netcore::process::{ProcessInfo, ProcessRef};
 use netcore::{Error, Result};
 
 /// One kernel row: the raw `Socket` plus optional TCP extended info.
+///
 /// Extended info is only present when we asked for it (TCP dumps) and only
 /// when the socket has actually carried traffic (the kernel skips
 /// `TcpInfo` for listeners and freshly-created sockets).
 pub struct SockRow {
+    /// The parsed socket metadata.
     pub socket: Socket,
+    /// TCP extended statistics, when available.
     pub tcp: Option<TcpStats>,
 }
 
 /// The subset of `tcp_info` we surface to the domain layer.
 pub struct TcpStats {
+    /// Bytes this socket has sent.
     pub bytes_sent: u64,
+    /// Bytes this socket has received.
     pub bytes_received: u64,
     /// Smoothed RTT in microseconds. `tcp_info.rtt` is already in usec.
     pub rtt_us: u32,

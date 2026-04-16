@@ -27,11 +27,15 @@ pub enum Layer {
     Service,
 }
 
+/// How bad a finding is. Determines exit code and rendering color.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Severity {
+    /// Informational: something to be aware of, but not blocking.
     Info,
+    /// Degraded: something is wrong but connectivity may still partially work.
     Warn,
+    /// Broken: connectivity is impaired at this layer.
     Broken,
 }
 
@@ -111,10 +115,13 @@ pub enum FirewallVerdict {
     Unknown,
 }
 
+/// Which firewall tool provided the inbound verdict.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum FirewallBackend {
+    /// nftables via `nft -j list ruleset`.
     Nftables,
+    /// iptables via `iptables -L`.
     Iptables,
     /// Neither tool present or accessible.
     Unknown,
@@ -132,9 +139,12 @@ pub struct ProbeCapabilities {
     pub unprivileged_icmp: bool,
 }
 
+/// Options for an ICMP echo probe.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PingOpts {
+    /// Number of echo requests to send.
     pub count: u32,
+    /// Per-packet timeout.
     pub timeout: Duration,
 }
 
@@ -144,10 +154,14 @@ impl Default for PingOpts {
     }
 }
 
+/// Options for a traceroute probe.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TraceOpts {
+    /// Maximum TTL before giving up.
     pub max_hops: u8,
+    /// How long to wait for each hop to respond.
     pub timeout_per_hop: Duration,
+    /// Transport protocol for probes.
     pub proto: L4Proto,
 }
 

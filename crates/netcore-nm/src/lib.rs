@@ -84,7 +84,8 @@ where
         .block_on(fut)
 }
 
-// Re-export so the CLI can import one name.
+/// Convenience constructor for [`Error::Backend`]; used internally by the
+/// D-Bus helpers.
 pub fn backend_error(msg: impl Into<String>) -> Error { Error::Backend(msg.into()) }
 
 #[cfg(test)]

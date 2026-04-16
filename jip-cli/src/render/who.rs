@@ -14,6 +14,8 @@ use netcore::service::Flow;
 
 use crate::theme;
 
+/// Print a `jip who` table: one row per established flow, sorted by remote
+/// address.
 pub fn who(flows: &[Flow]) {
     let mut sorted: Vec<&Flow> = flows.iter().collect();
     sorted.sort_by(|a, b| a.remote.ip().cmp(&b.remote.ip()).then(a.remote.port().cmp(&b.remote.port())));

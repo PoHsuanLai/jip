@@ -16,6 +16,8 @@ use netcore::service::{BindScope, Exposure, Service};
 
 use crate::theme;
 
+/// Print a `jip listen` table: one row per listening service, sorted by
+/// exposure risk (most exposed first).
 pub fn listen(services: &[Service]) {
     let mut sorted: Vec<&Service> = services.iter().collect();
     sorted.sort_by_key(|s| (exposure_rank(s.exposure), s.port, proto_label(s.proto)));

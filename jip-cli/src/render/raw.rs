@@ -3,6 +3,7 @@
 use anstream::println;
 use netcore::link::{Addr, Link, Neighbor, Route, RouteDst};
 
+/// Print a list of links in a format similar to `ip link show`.
 pub fn links(links: &[Link]) {
     for l in links {
         println!(
@@ -20,6 +21,7 @@ pub fn links(links: &[Link]) {
     }
 }
 
+/// Print a list of addresses grouped by link, similar to `ip addr show`.
 pub fn addrs(links: &[Link], addrs: &[(u32, Addr)]) {
     for l in links {
         let mine: Vec<&Addr> = addrs.iter().filter(|(i, _)| *i == l.index).map(|(_, a)| a).collect();
@@ -39,6 +41,7 @@ pub fn addrs(links: &[Link], addrs: &[(u32, Addr)]) {
     }
 }
 
+/// Print a list of routes in a format similar to `ip route show`.
 pub fn routes(routes: &[Route]) {
     for r in routes {
         let dst = match &r.dst {
@@ -53,6 +56,7 @@ pub fn routes(routes: &[Route]) {
     }
 }
 
+/// Print a list of ARP/ND neighbor entries, similar to `ip neigh show`.
 pub fn neighbors(neigh: &[Neighbor]) {
     for n in neigh {
         let lladdr = n.lladdr.as_ref().map(|m| m.to_string()).unwrap_or_else(|| "-".into());

@@ -21,7 +21,7 @@ use netcore::path::{
 use netcore::traits::{Diagnostician, Firewall, Inventory, Reachability, Resolver};
 use netcore::{Error, Result};
 
-/// Well-known canary for the internet-reachable check.
+/// Well-known canary for the internet-reachable check (Cloudflare 1.1.1.1).
 const CANARY_V4: IpAddr = IpAddr::V4(Ipv4Addr::new(1, 1, 1, 1));
 const CANARY_PORT: u16 = 443;
 const DEFAULT_HTTPS_PORT: u16 = 443;
@@ -35,6 +35,9 @@ pub struct DiagApp {
 }
 
 impl DiagApp {
+    /// Create a new diagnostician with the required inventory, resolver, and
+    /// reachability backends. Call [`DiagApp::with_firewall`] to add firewall
+    /// posture checking.
     pub fn new(
         inventory: Box<dyn Inventory>,
         resolver: Box<dyn Resolver>,
@@ -43,6 +46,8 @@ impl DiagApp {
         Self { inventory, resolver, reach, firewall: None }
     }
 
+    /// Attach an optional firewall backend. When present, `check()` includes
+    /// inbound exposure verdicts.
     pub fn with_firewall(mut self, firewall: Box<dyn Firewall>) -> Self {
         self.firewall = Some(firewall);
         self
@@ -261,7 +266,10 @@ fn check_internet(reach: &dyn Reachability, findings: &mut Vec<Finding>) {
     }
 }
 
-/// Select the probe strategy for a target.
+/// Select the [`ProbeStrategy`] appropriate for a given [`Target`].
+///
+/// The strategy is a pure function of the target shape: URL targets run HTTP;
+/// hostnames with ports run TCP; bare IPs on LAN prefixes use ICMP only.
 pub fn strategy_for(target: &Target) -> ProbeStrategy {
     match target {
         Target::Url { .. } => ProbeStrategy::HttpUrl,
@@ -451,7 +459,8 @@ fn empty_probes(strategy: ProbeStrategy) -> ProbeResults {
     }
 }
 
-// Re-exports used by consumers that want a Diagnostician impl.
+/// Re-export of [`netcore::traits::Diagnostician`] for consumers that import
+/// from this crate.
 pub use netcore::traits::Diagnostician as DiagnosticianTrait;
 
 #[allow(dead_code)]

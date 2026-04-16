@@ -37,11 +37,13 @@ pub struct ResolverBackend {
 }
 
 impl ResolverBackend {
+    /// Create a new resolver, probing for systemd-resolved at construction.
     pub fn new() -> Self {
         Self { has_resolved: Self::probe_resolved() }
     }
 
-    /// Force libc-only. Useful for tests and environments without D-Bus.
+    /// Create a resolver that uses only libc `getaddrinfo`. Useful for tests
+    /// and environments without D-Bus.
     pub fn libc_only() -> Self { Self { has_resolved: false } }
 
     fn probe_resolved() -> bool {

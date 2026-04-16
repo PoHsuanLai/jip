@@ -32,11 +32,14 @@ impl From<&str> for ConnectionId {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Family {
+    /// IPv4.
     V4,
+    /// IPv6.
     V6,
 }
 
 impl Family {
+    /// Return the [`Family`] for a given IP address.
     pub fn of(ip: IpAddr) -> Self {
         match ip {
             IpAddr::V4(_) => Family::V4,
@@ -48,7 +51,9 @@ impl Family {
 /// A user-facing network connection: one link plus its interpreted state.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Connection {
+    /// Stable identifier, preferring the NM profile name over the link name.
     pub id: ConnectionId,
+    /// What kind of connection this is (Ethernet, Wifi, VPN, etc.).
     pub medium: Medium,
     /// The underlying kernel link, preserved for detail views and `jip raw`.
     pub link: Link,
@@ -78,8 +83,11 @@ pub struct Connection {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Medium {
+    /// Wired Ethernet (physical NIC).
     Ethernet,
+    /// IEEE 802.11 wireless interface.
     Wifi {
+        /// SSID of the associated BSS, if currently connected.
         ssid: Option<String>,
         signal: Option<WifiSignal>,
         security: Option<WifiSecurity>,
@@ -88,37 +96,52 @@ pub enum Medium {
     Virtual {
         kind: VirtualKind,
     },
+    /// VPN tunnel.
     Vpn {
         kind: VpnKind,
     },
+    /// Mobile broadband (LTE/5G).
     Cellular {
+        /// Carrier name, when the modem reports it.
         operator: Option<String>,
     },
+    /// Loopback interface.
     Loopback,
 }
 
+/// Subtype of a virtual (`Medium::Virtual`) link.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum VirtualKind {
+    /// Docker-managed bridge (name starts with `docker` or `br-`).
     Docker,
+    /// Generic Linux bridge.
     Bridge,
+    /// Virtual Ethernet pair.
     Veth,
+    /// TAP device (L2 virtual interface).
     Tap,
+    /// Unrecognised virtual interface.
     Other,
 }
 
+/// Subtype of a VPN (`Medium::Vpn`) link.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum VpnKind {
+    /// WireGuard tunnel.
     Wireguard,
+    /// OpenVPN tunnel.
     OpenVpn,
     /// Generic point-to-point tunnel.
     Tun,
     /// L2 tunnel (some VPNs create a tap device).
     Tap,
+    /// Unrecognised VPN type.
     Other,
 }
 
+/// Signal strength and rate information for an associated wifi BSS.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct WifiSignal {
     /// dBm, typically -30 (great) to -90 (unusable).
@@ -131,15 +154,19 @@ pub struct WifiSignal {
 
 impl Eq for WifiSignal {}
 
+/// Security mode of the associated wifi BSS.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum WifiSecurity {
+    /// No authentication.
     Open,
+    /// WEP (deprecated).
     Wep,
     Wpa2Personal,
     Wpa2Enterprise,
     Wpa3Personal,
     Wpa3Enterprise,
+    /// An unrecognised security mode; the raw string is preserved.
     Other(String),
 }
 
