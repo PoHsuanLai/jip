@@ -452,6 +452,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "genetlink"
+version = "0.2.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4d8935531e8e0919b17043c668cc18bfac1622f2fab73125f4f018124ee330b8"
+dependencies = [
+ "futures",
+ "log",
+ "netlink-packet-core 0.8.1",
+ "netlink-packet-generic",
+ "netlink-proto",
+ "thiserror 1.0.69",
+]
+
+[[package]]
 name = "getrandom"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -760,6 +774,7 @@ dependencies = [
  "rtnetlink",
  "thiserror 2.0.18",
  "tokio",
+ "wl-nl80211",
 ]
 
 [[package]]
@@ -815,6 +830,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3463cbb78394cb0141e2c926b93fc2197e473394b761986eca3b9da2c63ae0f4"
 dependencies = [
  "paste",
+]
+
+[[package]]
+name = "netlink-packet-generic"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2f891b2e0054cac5a684a06628f59568f841c93da4e551239da6e518f539e775"
+dependencies = [
+ "netlink-packet-core 0.8.1",
 ]
 
 [[package]]
@@ -1826,6 +1850,24 @@ dependencies = [
  "serde_json",
  "unicode-xid",
  "wasmparser",
+]
+
+[[package]]
+name = "wl-nl80211"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3f5063b2f6b0d2073ef7a339be092f27fd12d04e3809e92826791c884112069d"
+dependencies = [
+ "bitflags 2.11.1",
+ "futures",
+ "genetlink",
+ "log",
+ "netlink-packet-core 0.8.1",
+ "netlink-packet-generic",
+ "netlink-proto",
+ "netlink-sys",
+ "thiserror 1.0.69",
+ "tokio",
 ]
 
 [[package]]

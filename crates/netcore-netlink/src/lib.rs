@@ -37,6 +37,7 @@ use netcore::traits::{Inventory, InventoryRaw};
 use netcore::{Error, Result};
 
 mod sockdiag;
+mod wifi;
 
 /// Production netlink backend. Holds no state; each call builds a new
 /// current_thread tokio runtime (~1ms) and a fresh netlink socket.
@@ -175,6 +176,21 @@ impl Inventory for NetlinkBackend {
         let addrs = self.addrs()?;
         let routes = self.routes()?;
         let neighbors = self.neighbors()?;
+
+        // Gather wifi snapshots up-front so `medium_for` can attach SSID +
+        // signal. nl80211 failures degrade silently — the bare `Medium::Wifi`
+        // with no metadata is still strictly better than `Medium::Other`.
+        let wifi_links: Vec<u32> = links
+            .iter()
+            .filter(|l| matches!(l.kind, LinkKind::Wifi))
+            .map(|l| l.index)
+            .collect();
+        let wifi_snaps = if wifi_links.is_empty() {
+            std::collections::HashMap::new()
+        } else {
+            Self::block_on(async { collect_wifi(&wifi_links).await }).unwrap_or_default()
+        };
+
         let mut out = Vec::with_capacity(links.len());
         for link in &links {
             let link_addrs: Vec<Addr> = addrs
@@ -188,9 +204,20 @@ impl Inventory for NetlinkBackend {
             let gateway = default_route
                 .and_then(|r| r.gateway)
                 .map(|ip| gateway_for(ip, &neighbors));
+            let medium = match link.kind {
+                LinkKind::Wifi => {
+                    let snap = wifi_snaps.get(&link.index).cloned().unwrap_or_default();
+                    Medium::Wifi {
+                        ssid: snap.ssid,
+                        signal: snap.signal,
+                        security: None,
+                    }
+                }
+                _ => medium_for(link),
+            };
             out.push(Connection {
                 id: ConnectionId(link.name.clone()),
-                medium: medium_for(link),
+                medium,
                 link: link.clone(),
                 primary_v4: primary_v4(&link_addrs),
                 primary_v6: primary_v6(&link_addrs),
@@ -654,6 +681,26 @@ fn v4_lease(addrs: &[Addr]) -> Option<DhcpLease> {
             }),
             Lifetime::Forever => None,
         })
+}
+
+/// Open one nl80211 connection and pull a snapshot for each wifi ifindex.
+/// Errors are swallowed per-interface: if nl80211 isn't available or a
+/// dump fails, that link simply gets no SSID/signal — the Medium stays
+/// `Wifi { None, None, None }`.
+async fn collect_wifi(
+    if_indexes: &[u32],
+) -> Result<std::collections::HashMap<u32, wifi::WifiSnapshot>> {
+    let (connection, mut handle, _) = wl_nl80211::new_connection()
+        .map_err(|e| Error::Backend(format!("nl80211 connect: {e}")))?;
+    let conn_task = tokio::spawn(connection);
+    let mut out = std::collections::HashMap::new();
+    for &idx in if_indexes {
+        if let Some(snap) = wifi::snapshot(&mut handle, idx).await {
+            out.insert(idx, snap);
+        }
+    }
+    conn_task.abort();
+    Ok(out)
 }
 
 fn medium_for(link: &Link) -> Medium {

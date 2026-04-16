@@ -23,7 +23,7 @@ pub fn overview(conns: &[Connection], health: &Health, all: bool, family: Family
         .map(|c| {
             [
                 c.link.name.clone(),
-                kind_label(&c.link.kind).into(),
+                kind_cell(c),
                 state_label(c).into(),
                 v4_cell(c, family),
                 v6_cell(c, family),
@@ -155,6 +155,20 @@ fn kind_label(kind: &LinkKind) -> &'static str {
         LinkKind::Vlan => "vlan",
         LinkKind::Bond => "bond",
         LinkKind::Other(_) => "other",
+    }
+}
+
+/// For wifi links, suffix the associated SSID and signal so the user can
+/// tell "connected to 'home', -54 dBm" apart from "wifi, radio up but no
+/// association". Non-wifi links fall through to the bare kind label.
+fn kind_cell(c: &Connection) -> String {
+    let base = kind_label(&c.link.kind);
+    match &c.medium {
+        Medium::Wifi { ssid: Some(name), signal, .. } => match signal {
+            Some(s) => format!("{base} {name} ({} dBm)", s.rssi_dbm),
+            None => format!("{base} {name}"),
+        },
+        _ => base.into(),
     }
 }
 
