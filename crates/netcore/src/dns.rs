@@ -27,7 +27,7 @@ pub struct DnsResolution {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(tag = "kind", rename_all = "snake_case")]
+#[serde(tag = "kind", content = "addr", rename_all = "snake_case")]
 pub enum DnsSource {
     /// systemd-resolved or dnsmasq listening on loopback.
     Stub(IpAddr),

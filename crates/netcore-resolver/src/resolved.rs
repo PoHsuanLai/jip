@@ -33,9 +33,10 @@ const AF_UNSPEC: i32 = 0;
 const AF_INET: i32 = 2;
 const AF_INET6: i32 = 10;
 
-/// systemd-resolved ResolveHostname flags. Only the ones we care about.
+/// systemd-resolved ResolveHostname flags. Values from
+/// `systemd/src/resolve/resolved-def.h` (v256+). Only the ones we surface.
 const SD_RESOLVED_AUTHENTICATED: u64 = 1 << 9;
-const SD_RESOLVED_FROM_CACHE: u64 = 1 << 5;
+const SD_RESOLVED_FROM_CACHE: u64 = 1 << 20;
 
 /// (ifindex, family, addr_bytes) — the signature of one entry in a
 /// resolved ResolveHostname reply. Aliased to keep clippy off our back.

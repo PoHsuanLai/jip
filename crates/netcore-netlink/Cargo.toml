@@ -11,7 +11,7 @@ description = "rtnetlink backend for netcore: InventoryRaw + Inventory via Linux
 netcore = { path = "../netcore" }
 rtnetlink = "0.20"
 netlink-packet-route = "0.28"
-netlink-packet-sock-diag = "0.4"
+netlink-packet-sock-diag = { version = "0.4", features = ["rich_nlas"] }
 # sock-diag 0.4 is built against netlink-packet-core 0.7 — pin to match so
 # `SockDiagMessage: NetlinkSerializable` resolves.
 netlink-packet-core = "0.7"

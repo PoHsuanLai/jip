@@ -22,6 +22,15 @@ pub fn print(path: &Path) {
         if let Some(u) = &r.upstream_used {
             print!(" (upstream {u})");
         }
+        // Both flags come from systemd-resolved; libc fallback leaves them
+        // false. Mark them when true so users can tell a cache hit from a
+        // live resolution, and see DNSSEC when it's working.
+        let mut tags: Vec<&str> = Vec::new();
+        if r.cached { tags.push("cached"); }
+        if r.authenticated { tags.push("dnssec-ok"); }
+        if !tags.is_empty() {
+            print!(" [{}]", tags.join(", "));
+        }
         println!();
         for a in &r.answers {
             println!("        → {}", a.ip);

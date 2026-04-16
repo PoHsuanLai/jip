@@ -164,7 +164,9 @@ impl InventoryRaw for NetlinkBackend {
         })
     }
 
-    fn sockets(&self) -> Result<Vec<Socket>> { sockdiag::dump_all() }
+    fn sockets(&self) -> Result<Vec<Socket>> {
+        Ok(sockdiag::dump_all()?.into_iter().map(|r| r.socket).collect())
+    }
 }
 
 impl Inventory for NetlinkBackend {
@@ -206,9 +208,10 @@ impl Inventory for NetlinkBackend {
 
     fn services(&self) -> Result<Vec<Service>> {
         use netcore::link::L4Proto;
-        let sockets = self.sockets()?;
-        let mut out = Vec::with_capacity(sockets.len() / 2);
-        for s in sockets {
+        let rows = sockdiag::dump_all()?;
+        let mut out = Vec::with_capacity(rows.len() / 2);
+        for r in rows {
+            let s = r.socket;
             // TCP listeners are explicit. UDP "sockets" come back as Close; treat
             // any UDP socket with no peer as a listener (UDP has no Listen state).
             let is_listener = match s.proto {
@@ -229,19 +232,28 @@ impl Inventory for NetlinkBackend {
     }
 
     fn flows(&self) -> Result<Vec<Flow>> {
-        let sockets = self.sockets()?;
-        let mut out = Vec::with_capacity(sockets.len() / 2);
-        for s in sockets {
+        let rows = sockdiag::dump_all()?;
+        let mut out = Vec::with_capacity(rows.len() / 2);
+        for r in rows {
+            let s = r.socket;
             if !matches!(s.state, TcpState::Established) { continue; }
             let Some(remote) = s.remote else { continue };
+            // `tcp_info.bytes_sent` is data this host sent; from the flow's
+            // point of view that's `bytes_out`. Zero counters on sockets the
+            // kernel hasn't reported info for (fresh/listening/non-TCP).
+            let (bytes_in, bytes_out, rtt_us) = match r.tcp {
+                Some(t) => (t.bytes_received, t.bytes_sent, Some(t.rtt_us)),
+                None => (0, 0, None),
+            };
             out.push(Flow {
                 proto: s.proto,
                 local: s.local,
                 remote,
                 state: s.state,
                 process: s.process,
-                bytes_in: 0,
-                bytes_out: 0,
+                bytes_in,
+                bytes_out,
+                rtt_us,
             });
         }
         Ok(out)

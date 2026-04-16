@@ -83,4 +83,8 @@ pub struct Flow {
     pub process: ProcessInfo,
     pub bytes_in: u64,
     pub bytes_out: u64,
+    /// Smoothed round-trip time in microseconds, when the kernel has one
+    /// (TCP only, and only once the connection has carried data).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rtt_us: Option<u32>,
 }

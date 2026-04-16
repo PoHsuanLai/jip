@@ -18,7 +18,10 @@ use netlink_packet_core::{
 };
 use netlink_packet_sock_diag::{
     constants::{AF_INET, AF_INET6, IPPROTO_TCP, IPPROTO_UDP},
-    inet::{ExtensionFlags, InetRequest, SocketId, StateFlags},
+    inet::{
+        nlas::{Nla, TcpInfo},
+        ExtensionFlags, InetRequest, InetResponse, SocketId, StateFlags,
+    },
     SockDiagMessage,
 };
 use netlink_sys::{protocols::NETLINK_SOCK_DIAG, Socket as NlSocket, SocketAddr as NlSocketAddr};
@@ -42,18 +45,36 @@ use netcore::link::{L4Proto, Socket, TcpState};
 use netcore::process::{ProcessInfo, ProcessRef};
 use netcore::{Error, Result};
 
+/// One kernel row: the raw `Socket` plus optional TCP extended info.
+/// Extended info is only present when we asked for it (TCP dumps) and only
+/// when the socket has actually carried traffic (the kernel skips
+/// `TcpInfo` for listeners and freshly-created sockets).
+pub struct SockRow {
+    pub socket: Socket,
+    pub tcp: Option<TcpStats>,
+}
+
+/// The subset of `tcp_info` we surface to the domain layer.
+pub struct TcpStats {
+    pub bytes_sent: u64,
+    pub bytes_received: u64,
+    /// Smoothed RTT in microseconds. `tcp_info.rtt` is already in usec.
+    pub rtt_us: u32,
+}
+
 /// Dump TCP + UDP, IPv4 + IPv6. Four separate request/response cycles.
-pub fn dump_all() -> Result<Vec<Socket>> {
+/// TCP dumps request `EXT_INFO` so we get `tcp_info` back for every flow.
+pub fn dump_all() -> Result<Vec<SockRow>> {
     let inode_to_proc = build_inode_index();
     let mut out = Vec::with_capacity(128);
     for family in [AF_INET, AF_INET6] {
-        for (proto, states) in [
-            (IPPROTO_TCP, StateFlags::all()),
-            (IPPROTO_UDP, StateFlags::all()),
+        for (proto, states, exts) in [
+            (IPPROTO_TCP, StateFlags::all(), ExtensionFlags::INFO),
+            (IPPROTO_UDP, StateFlags::all(), ExtensionFlags::empty()),
         ] {
-            let entries = dump_family_proto(family, proto, states)?;
-            for header in entries {
-                out.push(header_to_socket(&header, proto, &inode_to_proc));
+            let responses = dump_family_proto(family, proto, states, exts)?;
+            for r in responses {
+                out.push(response_to_row(r, proto, &inode_to_proc));
             }
         }
     }
@@ -64,7 +85,8 @@ fn dump_family_proto(
     family: u8,
     protocol: u8,
     states: StateFlags,
-) -> Result<Vec<netlink_packet_sock_diag::inet::InetResponseHeader>> {
+    extensions: ExtensionFlags,
+) -> Result<Vec<InetResponse>> {
     let mut socket = NlSocket::new(NETLINK_SOCK_DIAG)
         .map_err(|e| Error::Backend(format!("sock_diag socket: {e}")))?;
     socket
@@ -77,7 +99,7 @@ fn dump_family_proto(
     let req = InetRequest {
         family,
         protocol,
-        extensions: ExtensionFlags::empty(),
+        extensions,
         states,
         socket_id: if family == AF_INET { SocketId::new_v4() } else { SocketId::new_v6() },
     };
@@ -93,8 +115,11 @@ fn dump_family_proto(
         .send(&buf, 0)
         .map_err(|e| Error::Backend(format!("sock_diag send: {e}")))?;
 
-    let mut headers = Vec::with_capacity(32);
-    let mut recv_buf = vec![0u8; 8192];
+    let mut responses = Vec::with_capacity(32);
+    // `tcp_info` alone is ~240 bytes, and a busy host can return 100+
+    // sockets per message. Oversize the recv buffer so the kernel never
+    // has to split a single response across reads.
+    let mut recv_buf = vec![0u8; 65536];
     'outer: loop {
         let n = socket
             .recv(&mut &mut recv_buf[..], 0)
@@ -108,7 +133,7 @@ fn dump_family_proto(
             let len = msg.header.length as usize;
             match msg.payload {
                 NetlinkPayload::InnerMessage(SockDiagMessage::InetResponse(r)) => {
-                    headers.push(r.header);
+                    responses.push(*r);
                 }
                 NetlinkPayload::Done(_) => break 'outer,
                 NetlinkPayload::Error(e) => {
@@ -120,7 +145,30 @@ fn dump_family_proto(
             offset += len;
         }
     }
-    Ok(headers)
+    Ok(responses)
+}
+
+fn tcp_stats_from(info: &TcpInfo) -> TcpStats {
+    TcpStats {
+        bytes_sent: info.bytes_sent,
+        bytes_received: info.bytes_received,
+        rtt_us: info.rtt,
+    }
+}
+
+fn extract_tcp_stats(nlas: &[Nla]) -> Option<TcpStats> {
+    for nla in nlas {
+        if let Nla::TcpInfo(info) = nla {
+            return Some(tcp_stats_from(info));
+        }
+    }
+    None
+}
+
+fn response_to_row(r: InetResponse, protocol: u8, index: &InodeIndex) -> SockRow {
+    let tcp = if protocol == IPPROTO_TCP { extract_tcp_stats(&r.nlas) } else { None };
+    let socket = header_to_socket(&r.header, protocol, index);
+    SockRow { socket, tcp }
 }
 
 fn header_to_socket(
