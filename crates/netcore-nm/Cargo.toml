@@ -1,0 +1,14 @@
+[package]
+name = "netcore-nm"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "NetworkManager (D-Bus / zbus) backend for netcore: Profile lookup + Actions."
+
+[dependencies]
+netcore = { path = "../netcore" }
+zbus = { version = "5", default-features = false, features = ["tokio"] }
+tokio = { version = "1", default-features = false, features = ["rt", "macros"] }
+thiserror = { workspace = true }

@@ -18,7 +18,7 @@ use crate::theme;
 pub fn overview(conns: &[Connection], health: &Health, all: bool, family: FamilyFilter) {
     let visible: Vec<&Connection> = conns.iter().filter(|c| all || keep_default(c)).collect();
 
-    let rows: Vec<[String; 6]> = visible
+    let rows: Vec<[String; 7]> = visible
         .iter()
         .map(|c| {
             [
@@ -28,6 +28,7 @@ pub fn overview(conns: &[Connection], health: &Health, all: bool, family: Family
                 v4_cell(c, family),
                 v6_cell(c, family),
                 c.gateway.as_ref().map(|g| g.ip.to_string()).unwrap_or_else(|| "-".into()),
+                profile_cell(c),
             ]
         })
         .collect();
@@ -39,7 +40,7 @@ pub fn overview(conns: &[Connection], health: &Health, all: bool, family: Family
         }
     } else {
         let mut b = Builder::default();
-        b.push_record(["NAME", "KIND", "STATE", "IPv4", "IPv6", "GATEWAY"]);
+        b.push_record(["NAME", "KIND", "STATE", "IPv4", "IPv6", "GATEWAY", "PROFILE"]);
         for row in &rows {
             b.push_record(row);
         }
@@ -114,6 +115,18 @@ fn v6_cell(c: &Connection, family: FamilyFilter) -> String {
     } else {
         let d = theme::dim();
         format!("{primary} {d}+{extra} hidden{d:#}")
+    }
+}
+
+fn profile_cell(c: &Connection) -> String {
+    match &c.profile {
+        None => "-".into(),
+        Some(p) => {
+            // Append "(manual)" when autoconnect is off so it's visible
+            // at a glance why an otherwise-configured link doesn't come
+            // up on boot.
+            if p.autoconnect { p.name.clone() } else { format!("{} (manual)", p.name) }
+        }
     }
 }
 

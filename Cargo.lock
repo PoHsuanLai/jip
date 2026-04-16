@@ -645,6 +645,7 @@ dependencies = [
  "netcore",
  "netcore-diag",
  "netcore-netlink",
+ "netcore-nm",
  "netcore-probe",
  "netcore-resolver",
  "serde_json",
@@ -748,6 +749,16 @@ dependencies = [
  "rtnetlink",
  "thiserror 2.0.18",
  "tokio",
+]
+
+[[package]]
+name = "netcore-nm"
+version = "0.1.0"
+dependencies = [
+ "netcore",
+ "thiserror 2.0.18",
+ "tokio",
+ "zbus",
 ]
 
 [[package]]

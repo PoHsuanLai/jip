@@ -5,11 +5,13 @@ use std::net::{IpAddr, SocketAddr};
 use std::process::ExitCode;
 
 use clap::{Parser, Subcommand};
+use netcore::connection::{Connection, ConnectionId};
 use netcore::diag::CheckScope;
 use netcore::path::Target;
-use netcore::traits::{Diagnostician, Inventory, InventoryRaw};
+use netcore::traits::{Actions, Diagnostician, Inventory, InventoryRaw};
 use netcore_diag::DiagApp;
 use netcore_netlink::NetlinkBackend;
+use netcore_nm::NmBackend;
 use netcore_probe::ProbeBackend;
 use netcore_resolver::ResolverBackend;
 
@@ -77,6 +79,19 @@ enum Cmd {
         #[command(subcommand)]
         what: RawKind,
     },
+    /// Activate an NM profile (equivalent to `nmcli con up`).
+    Use {
+        /// Profile name or UUID.
+        profile: String,
+    },
+    /// Bounce an NM profile (deactivate + activate).
+    Reconnect {
+        profile: String,
+    },
+    /// Delete an NM profile from disk.
+    Forget {
+        profile: String,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -112,12 +127,31 @@ fn run(cli: Cli) -> anyhow::Result<ExitCode> {
         Some(Cmd::Check) => check(json),
         Some(Cmd::Reach { target }) => reach(&target, json),
         Some(Cmd::Raw { what }) => raw(what, json),
+        Some(Cmd::Use { profile }) => nm_action(ActionKind::Prefer, &profile),
+        Some(Cmd::Reconnect { profile }) => nm_action(ActionKind::Reconnect, &profile),
+        Some(Cmd::Forget { profile }) => nm_action(ActionKind::Forget, &profile),
     }
+}
+
+enum ActionKind { Prefer, Reconnect, Forget }
+
+fn nm_action(kind: ActionKind, profile: &str) -> anyhow::Result<ExitCode> {
+    let Some(nm) = NmBackend::new() else {
+        anyhow::bail!("NetworkManager isn't running on this system");
+    };
+    let id = ConnectionId(profile.to_string());
+    match kind {
+        ActionKind::Prefer => nm.prefer(&id)?,
+        ActionKind::Reconnect => nm.reconnect(&id)?,
+        ActionKind::Forget => nm.forget(&id)?,
+    }
+    Ok(ExitCode::SUCCESS)
 }
 
 fn overview(json: bool, all: bool, family: FamilyFilter) -> anyhow::Result<ExitCode> {
     let inv = NetlinkBackend::new();
-    let conns = inv.connections()?;
+    let mut conns = inv.connections()?;
+    enrich_with_nm_profiles(&mut conns);
     let diag = build_diag();
     let health = diag.check(CheckScope::Quick)?;
     if json {
@@ -126,6 +160,19 @@ fn overview(json: bool, all: bool, family: FamilyFilter) -> anyhow::Result<ExitC
         render::connection::overview(&conns, &health, all, family);
     }
     Ok(ExitCode::SUCCESS)
+}
+
+/// Attach NM `Profile` to each `Connection` by matching iface name.
+/// Silent no-op when NM isn't running or the lookup fails — the netlink
+/// view is authoritative for everything else.
+fn enrich_with_nm_profiles(conns: &mut [Connection]) {
+    let Some(nm) = NmBackend::new() else { return };
+    let Ok(by_iface) = nm.profiles_by_iface() else { return };
+    for c in conns {
+        if let Some(p) = by_iface.get(&c.link.name) {
+            c.profile = Some(p.clone());
+        }
+    }
 }
 
 fn check(json: bool) -> anyhow::Result<ExitCode> {
