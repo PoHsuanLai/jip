@@ -52,6 +52,9 @@ pub fn dim() -> Style {
 pub fn ok() -> Style {
     Style::new().fg_color(Some(Color::Ansi(AnsiColor::Green))).bold()
 }
+pub fn ok_soft() -> Style {
+    Style::new().fg_color(Some(Color::Ansi(AnsiColor::Green)))
+}
 pub fn warn() -> Style {
     Style::new().fg_color(Some(Color::Ansi(AnsiColor::Yellow)))
 }
@@ -60,4 +63,29 @@ pub fn bad() -> Style {
 }
 pub fn info() -> Style {
     Style::new().fg_color(Some(Color::Ansi(AnsiColor::Cyan)))
+}
+pub fn accent() -> Style {
+    Style::new().fg_color(Some(Color::Ansi(AnsiColor::Blue)))
+}
+pub fn accent2() -> Style {
+    Style::new().fg_color(Some(Color::Ansi(AnsiColor::Magenta)))
+}
+pub fn strong() -> Style {
+    Style::new().bold()
+}
+
+/// Wrap `text` in the given style, or return it unchanged in Plain mode so
+/// pipe consumers never see escapes. Call sites stop caring about which
+/// mode we're in.
+pub fn paint<S: AsRef<str>>(style: Style, text: S) -> String {
+    if is_plain() {
+        text.as_ref().to_string()
+    } else {
+        format!("{style}{}{style:#}", text.as_ref())
+    }
+}
+
+/// Dim a literal placeholder like "-" so empty cells don't draw the eye.
+pub fn dim_placeholder(s: &str) -> String {
+    paint(dim(), s)
 }

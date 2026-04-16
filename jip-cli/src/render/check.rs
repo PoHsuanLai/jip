@@ -43,11 +43,21 @@ pub fn print(health: &Health) {
                     println!("         {dim}{line}{dim:#}");
                 }
             }
+            let arrow = theme::paint(theme::dim(), "→");
+            let hint = theme::info();
             match &f.remedy {
-                Some(Remedy::Run { cmd }) => println!("         → try: {cmd}"),
-                Some(Remedy::Check { what }) => println!("         → check: {what}"),
-                Some(Remedy::Reconnect { id }) => println!("         → reconnect {}", id.0),
-                Some(Remedy::ElevatePrivileges) => println!("         → run as root for more info"),
+                Some(Remedy::Run { cmd }) => {
+                    println!("         {arrow} {hint}try{hint:#}: {cmd}")
+                }
+                Some(Remedy::Check { what }) => {
+                    println!("         {arrow} {hint}check{hint:#}: {what}")
+                }
+                Some(Remedy::Reconnect { id }) => {
+                    println!("         {arrow} {hint}reconnect{hint:#} {}", id.0)
+                }
+                Some(Remedy::ElevatePrivileges) => {
+                    println!("         {arrow} {hint}run as root{hint:#} for more info")
+                }
                 Some(Remedy::None) | None => {}
             }
         }

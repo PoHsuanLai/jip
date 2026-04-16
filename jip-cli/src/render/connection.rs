@@ -10,7 +10,7 @@ use tabled::{
 
 use netcore::connection::{Connection, Medium};
 use netcore::diag::Health;
-use netcore::link::{AddrScope, LinkKind, OperState};
+use netcore::link::{AddrScope, LinkKind, NeighState, OperState};
 
 use crate::FamilyFilter;
 use crate::theme;
@@ -24,10 +24,10 @@ pub fn overview(conns: &[Connection], health: &Health, all: bool, family: Family
             [
                 c.link.name.clone(),
                 kind_cell(c),
-                state_label(c).into(),
+                state_cell(c),
                 v4_cell(c, family),
                 v6_cell(c, family),
-                c.gateway.as_ref().map(|g| g.ip.to_string()).unwrap_or_else(|| "-".into()),
+                gateway_cell(c),
                 profile_cell(c),
             ]
         })
@@ -86,8 +86,11 @@ fn print_health_line(health: &Health) {
 }
 
 fn v4_cell(c: &Connection, family: FamilyFilter) -> String {
-    if family == FamilyFilter::V6Only { return "-".into(); }
-    c.primary_v4.map(|ip| ip.to_string()).unwrap_or_else(|| "-".into())
+    if family == FamilyFilter::V6Only { return theme::dim_placeholder("-"); }
+    match c.primary_v4 {
+        Some(ip) => ip.to_string(),
+        None => theme::dim_placeholder("-"),
+    }
 }
 
 /// Primary IPv6 + "+N hidden" suffix counting other global IPv6s on this
@@ -95,10 +98,10 @@ fn v4_cell(c: &Connection, family: FamilyFilter) -> String {
 /// don't count — users care about "how many real outgoing addresses are
 /// there that I'm not seeing?".
 fn v6_cell(c: &Connection, family: FamilyFilter) -> String {
-    if family == FamilyFilter::V4Only { return "-".into(); }
+    if family == FamilyFilter::V4Only { return theme::dim_placeholder("-"); }
     let primary = match c.primary_v6 {
         Some(ip) => ip,
-        None => return "-".into(),
+        None => return theme::dim_placeholder("-"),
     };
     let extra = c
         .addresses
@@ -120,13 +123,32 @@ fn v6_cell(c: &Connection, family: FamilyFilter) -> String {
 
 fn profile_cell(c: &Connection) -> String {
     match &c.profile {
-        None => "-".into(),
+        None => theme::dim_placeholder("-"),
         Some(p) => {
             // Append "(manual)" when autoconnect is off so it's visible
             // at a glance why an otherwise-configured link doesn't come
             // up on boot.
-            if p.autoconnect { p.name.clone() } else { format!("{} (manual)", p.name) }
+            if p.autoconnect {
+                p.name.clone()
+            } else {
+                format!("{} {}", p.name, theme::paint(theme::dim(), "(manual)"))
+            }
         }
+    }
+}
+
+fn gateway_cell(c: &Connection) -> String {
+    let Some(g) = c.gateway.as_ref() else { return theme::dim_placeholder("-"); };
+    let ip = g.ip.to_string();
+    // Color the IP by the gateway's ARP state — that's the whole reason
+    // we carry NeighState alongside the route target.
+    match g.l2_state {
+        NeighState::Reachable | NeighState::Permanent => theme::paint(theme::ok_soft(), ip),
+        NeighState::Failed | NeighState::Incomplete => theme::paint(theme::bad(), ip),
+        NeighState::Stale | NeighState::Delay | NeighState::Probe => {
+            theme::paint(theme::warn(), ip)
+        }
+        NeighState::Noarp | NeighState::None => ip,
     }
 }
 
@@ -172,16 +194,20 @@ fn kind_cell(c: &Connection) -> String {
     }
 }
 
-fn state_label(c: &Connection) -> &'static str {
-    match c.link.state {
-        OperState::Up => match &c.medium {
-            Medium::Wifi { .. } => "UP-wifi",
-            _ => "UP",
-        },
-        OperState::Down => "DOWN",
-        OperState::Dormant => "DORMANT",
-        OperState::Unknown => "UNKNOWN",
-    }
+fn state_cell(c: &Connection) -> String {
+    let (label, style) = match c.link.state {
+        OperState::Up => {
+            let l = match &c.medium {
+                Medium::Wifi { .. } => "UP-wifi",
+                _ => "UP",
+            };
+            (l, theme::ok())
+        }
+        OperState::Down => ("DOWN", theme::bad()),
+        OperState::Dormant => ("DORMANT", theme::warn()),
+        OperState::Unknown => ("UNKNOWN", theme::dim()),
+    };
+    theme::paint(style, label)
 }
 
 fn plural(n: usize) -> &'static str { if n == 1 { "" } else { "s" } }

@@ -24,9 +24,9 @@ pub fn listen(services: &[Service]) {
         .iter()
         .map(|s| {
             [
-                format!("{}/{}", s.port, proto_label(s.proto)),
+                addr_cell(s.port, s.proto),
                 bind_label(&s.bind),
-                exposure_label(s.exposure).into(),
+                exposure_cell(s.exposure),
                 process_label(&s.process),
                 String::new(),
             ]
@@ -62,19 +62,25 @@ fn exposure_rank(e: Exposure) -> u8 {
     }
 }
 
-fn exposure_label(e: Exposure) -> &'static str {
-    match e {
-        Exposure::Exposed => "exposed",
-        Exposure::LanOnly => "lan-only",
-        Exposure::LocalOnly => "local",
-        Exposure::Unknown => "unknown",
-    }
+fn exposure_cell(e: Exposure) -> String {
+    // Color by risk: Exposed draws the eye (bold red), LanOnly is cautionary
+    // yellow, LocalOnly is a soft green (it's the "safe" state), Unknown is
+    // dim since it just means we couldn't measure the firewall.
+    let (label, style) = match e {
+        Exposure::Exposed => ("exposed", theme::bad()),
+        Exposure::LanOnly => ("lan-only", theme::warn()),
+        Exposure::LocalOnly => ("local", theme::ok_soft()),
+        Exposure::Unknown => ("unknown", theme::dim()),
+    };
+    theme::paint(style, label)
 }
 
 fn bind_label(b: &BindScope) -> String {
     match b {
-        BindScope::AnyAddress => "*".into(),
-        BindScope::Loopback => "lo".into(),
+        // `*` = bound to 0.0.0.0 / ::. Warn-colored because this is the bind
+        // that turns a service into an exposure risk.
+        BindScope::AnyAddress => theme::paint(theme::warn(), "*"),
+        BindScope::Loopback => theme::paint(theme::dim(), "lo"),
         BindScope::SpecificInterface(iface) => format!("%{iface}"),
         BindScope::SpecificAddress(ip) => ip.to_string(),
     }
@@ -87,10 +93,25 @@ fn proto_label(p: L4Proto) -> &'static str {
     }
 }
 
+/// "port/proto" — proto colored per family (tcp blue, udp magenta) so the
+/// type of listener is identifiable at a glance. Port stays normal weight
+/// because it's the key piece of info on this row.
+fn addr_cell(port: u16, p: L4Proto) -> String {
+    let slash = theme::paint(theme::dim(), "/");
+    let proto_painted = match p {
+        L4Proto::Tcp => theme::paint(theme::accent(), proto_label(p)),
+        L4Proto::Udp => theme::paint(theme::accent2(), proto_label(p)),
+    };
+    format!("{port}{slash}{proto_painted}")
+}
+
 fn process_label(p: &ProcessInfo) -> String {
     match p {
-        ProcessInfo::Known(ProcessRef { pid, comm }) => format!("{comm}({pid})"),
-        ProcessInfo::PermissionDenied => "-".into(),
-        ProcessInfo::Anonymous => "-".into(),
+        ProcessInfo::Known(ProcessRef { pid, comm }) => format!(
+            "{}{}",
+            theme::paint(theme::strong(), comm),
+            theme::paint(theme::dim(), format!("({pid})"))
+        ),
+        ProcessInfo::PermissionDenied | ProcessInfo::Anonymous => theme::dim_placeholder("-"),
     }
 }
