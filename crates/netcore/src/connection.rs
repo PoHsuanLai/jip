@@ -1,0 +1,174 @@
+//! Layer 2 — what users think a network connection *is*.
+//!
+//! A [`Connection`] joins a [`Link`](crate::Link), its addresses, its
+//! default-route gateway (with L2 status), its resolvers, and any
+//! NetworkManager profile into one coherent unit. This is the primary public
+//! surface: `jip` (no args) renders a list of these.
+
+use std::net::IpAddr;
+use std::time::Duration;
+
+use serde::{Deserialize, Serialize};
+
+use crate::link::{Addr, Link, MacAddr, NeighState};
+
+/// Stable identifier for a connection. When a NetworkManager profile is
+/// present, this is the profile name (e.g. `"Wired connection 1"`). Otherwise
+/// it is the link name.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct ConnectionId(pub String);
+
+impl std::fmt::Display for ConnectionId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+impl From<&str> for ConnectionId {
+    fn from(s: &str) -> Self { ConnectionId(s.to_owned()) }
+}
+
+/// Address family.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Family {
+    V4,
+    V6,
+}
+
+impl Family {
+    pub fn of(ip: IpAddr) -> Self {
+        match ip {
+            IpAddr::V4(_) => Family::V4,
+            IpAddr::V6(_) => Family::V6,
+        }
+    }
+}
+
+/// A user-facing network connection: one link plus its interpreted state.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Connection {
+    pub id: ConnectionId,
+    pub medium: Medium,
+    /// The underlying kernel link, preserved for detail views and `jip raw`.
+    pub link: Link,
+    /// Full list of addresses. Rendering uses [`Connection::primary_v4`] /
+    /// [`Connection::primary_v6`] by default and collapses the rest.
+    pub addresses: Vec<Addr>,
+    /// The single IPv4 to show in the default view.
+    pub primary_v4: Option<IpAddr>,
+    /// The single IPv6 to show in the default view. Non-deprecated, global.
+    pub primary_v6: Option<IpAddr>,
+    /// Present when the IPv4 address is dynamic (DHCP).
+    pub v4_lease: Option<DhcpLease>,
+    /// L3 gateway and its L2 reachability state.
+    pub gateway: Option<Gateway>,
+    /// Per-link resolvers (from `resolvectl`). Falls back to the stub when
+    /// per-link info is unavailable.
+    pub dns: Vec<IpAddr>,
+    /// True when the default route egresses through this connection.
+    pub is_default: bool,
+    /// Metric of the default route via this connection, if any. Lower = preferred.
+    pub default_metric: Option<u32>,
+    /// NetworkManager profile metadata, when one is attached.
+    pub profile: Option<Profile>,
+}
+
+/// What kind of connection this is from the user's perspective.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum Medium {
+    Ethernet,
+    Wifi {
+        ssid: Option<String>,
+        signal: Option<WifiSignal>,
+        security: Option<WifiSecurity>,
+    },
+    /// docker0, bridges, veth, tap, etc. — not a VPN, not a physical NIC.
+    Virtual {
+        kind: VirtualKind,
+    },
+    Vpn {
+        kind: VpnKind,
+    },
+    Cellular {
+        operator: Option<String>,
+    },
+    Loopback,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum VirtualKind {
+    Docker,
+    Bridge,
+    Veth,
+    Tap,
+    Other,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum VpnKind {
+    Wireguard,
+    OpenVpn,
+    /// Generic point-to-point tunnel.
+    Tun,
+    /// L2 tunnel (some VPNs create a tap device).
+    Tap,
+    Other,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct WifiSignal {
+    /// dBm, typically -30 (great) to -90 (unusable).
+    pub rssi_dbm: i32,
+    /// Optional signal quality as a 0–100 percentage if the driver reports it.
+    pub quality_pct: Option<u8>,
+    /// Link rate in Mbps, if known.
+    pub rate_mbps: Option<u32>,
+}
+
+impl Eq for WifiSignal {}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum WifiSecurity {
+    Open,
+    Wep,
+    Wpa2Personal,
+    Wpa2Enterprise,
+    Wpa3Personal,
+    Wpa3Enterprise,
+    Other(String),
+}
+
+/// The L3 default-route next-hop plus its L2 ARP/ND state. Having both lets
+/// the diagnostician say "your route points at 192.168.1.1 but it's not
+/// answering ARP" rather than just "unreachable".
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Gateway {
+    pub ip: IpAddr,
+    pub lladdr: Option<MacAddr>,
+    pub l2_state: NeighState,
+    pub is_router: bool,
+}
+
+/// Metadata from NetworkManager (or any future connection manager).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Profile {
+    pub name: String,
+    pub autoconnect: bool,
+    /// NM's raw type string: `"802-3-ethernet"`, `"wifi"`, `"vpn"`, `"bridge"`, ...
+    pub kind: String,
+}
+
+/// Summary of the active DHCP lease on the IPv4 address.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DhcpLease {
+    /// Remaining lease time. Computed from `valid_lft` at inventory time.
+    pub expires_in: Duration,
+    /// The DHCP server that granted the lease, when known. Not surfaced by
+    /// `ip -j`; requires NM or reading dhclient leases.
+    pub server: Option<IpAddr>,
+}

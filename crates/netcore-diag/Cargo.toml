@@ -1,0 +1,15 @@
+[package]
+name = "netcore-diag"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Diagnostician: composes netcore capability traits into Health and Path."
+
+[dependencies]
+netcore = { path = "../netcore" }
+url = "2"
+
+[dev-dependencies]
+netcore = { path = "../netcore", features = ["fixture"] }

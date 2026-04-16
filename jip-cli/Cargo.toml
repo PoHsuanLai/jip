@@ -1,0 +1,16 @@
+[package]
+name = "jip-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "jip — a modern CLI for Linux networking."
+
+[[bin]]
+name = "jip"
+path = "src/main.rs"
+
+[dependencies]
+netcore = { path = "../crates/netcore" }
+anyhow = { workspace = true }

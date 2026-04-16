@@ -1,0 +1,17 @@
+[package]
+name = "netcore"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Domain types and capability traits for the jip network CLI."
+
+[features]
+default = []
+fixture = []
+
+[dependencies]
+serde = { workspace = true }
+thiserror = { workspace = true }
+url = { version = "2", features = ["serde"] }
