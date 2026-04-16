@@ -1,43 +1,82 @@
-//! `jip` (no args) — one-line per connection plus a health summary.
+//! `jip` (no args) — one row per connection, plus a health summary.
+
+use std::net::IpAddr;
+
+use anstream::println;
+use tabled::{
+    builder::Builder,
+    settings::{Style, object::Rows, themes::Colorization, Color as TabColor},
+};
 
 use netcore::connection::{Connection, Medium};
 use netcore::diag::Health;
-use netcore::link::{LinkKind, OperState};
+use netcore::link::{AddrScope, LinkKind, OperState};
 
-pub fn overview(conns: &[Connection], health: &Health, all: bool) {
+use crate::FamilyFilter;
+use crate::theme;
+
+pub fn overview(conns: &[Connection], health: &Health, all: bool, family: FamilyFilter) {
     let visible: Vec<&Connection> = conns.iter().filter(|c| all || keep_default(c)).collect();
 
-    println!("{:<14} {:<8} {:<10} {:<22} {:<22} GATEWAY", "NAME", "KIND", "STATE", "IPv4", "IPv6");
-    for c in &visible {
-        let name = &c.link.name;
-        let kind = kind_label(&c.link.kind);
-        let state = state_label(c);
-        let v4 = c
-            .primary_v4
-            .map(|ip| ip.to_string())
-            .unwrap_or_else(|| "-".into());
-        let v6 = c
-            .primary_v6
-            .map(|ip| ip.to_string())
-            .unwrap_or_else(|| "-".into());
-        let gw = c
-            .gateway
-            .as_ref()
-            .map(|g| g.ip.to_string())
-            .unwrap_or_else(|| "-".into());
-        println!("{name:<14} {kind:<8} {state:<10} {v4:<22} {v6:<22} {gw}");
+    let rows: Vec<[String; 6]> = visible
+        .iter()
+        .map(|c| {
+            [
+                c.link.name.clone(),
+                kind_label(&c.link.kind).into(),
+                state_label(c).into(),
+                v4_cell(c, family),
+                v6_cell(c, family),
+                c.gateway.as_ref().map(|g| g.ip.to_string()).unwrap_or_else(|| "-".into()),
+            ]
+        })
+        .collect();
+
+    if theme::is_plain() {
+        // Tab-separated, no header — friendly to awk/cut/grep.
+        for row in &rows {
+            println!("{}", row.join("\t"));
+        }
+    } else {
+        let mut b = Builder::default();
+        b.push_record(["NAME", "KIND", "STATE", "IPv4", "IPv6", "GATEWAY"]);
+        for row in &rows {
+            b.push_record(row);
+        }
+        let mut table = b.build();
+        table.with(Style::blank());
+        let header_color = TabColor::BOLD | TabColor::UNDERLINE;
+        table.with(Colorization::exact([header_color], Rows::first()));
+        println!("{table}");
+        println!();
     }
-    println!();
+    print_health_line(health);
+}
+
+fn print_health_line(health: &Health) {
     match health {
-        Health::Ok => println!("Health: OK"),
+        Health::Ok => {
+            let s = theme::ok();
+            println!("Health: {s}OK{s:#}");
+        }
         Health::Degraded { findings } => {
-            println!("Health: DEGRADED ({} finding{})", findings.len(), plural(findings.len()));
+            let s = theme::warn();
+            println!(
+                "Health: {s}DEGRADED{s:#} ({} finding{})",
+                findings.len(),
+                plural(findings.len())
+            );
             for f in findings.iter().take(3) {
                 println!("  - {}", f.summary);
             }
         }
         Health::Broken { findings } => {
-            println!("Health: BROKEN ({} finding{})", findings.len(), plural(findings.len()));
+            let s = theme::bad();
+            println!(
+                "Health: {s}BROKEN{s:#} ({} finding{})",
+                findings.len(),
+                plural(findings.len())
+            );
             for f in findings.iter().take(3) {
                 println!("  - {}", f.summary);
             }
@@ -45,8 +84,40 @@ pub fn overview(conns: &[Connection], health: &Health, all: bool) {
     }
 }
 
+fn v4_cell(c: &Connection, family: FamilyFilter) -> String {
+    if family == FamilyFilter::V6Only { return "-".into(); }
+    c.primary_v4.map(|ip| ip.to_string()).unwrap_or_else(|| "-".into())
+}
+
+/// Primary IPv6 + "+N hidden" suffix counting other global IPv6s on this
+/// link. `::1`, link-local (scope != Global), and deprecated addresses
+/// don't count — users care about "how many real outgoing addresses are
+/// there that I'm not seeing?".
+fn v6_cell(c: &Connection, family: FamilyFilter) -> String {
+    if family == FamilyFilter::V4Only { return "-".into(); }
+    let primary = match c.primary_v6 {
+        Some(ip) => ip,
+        None => return "-".into(),
+    };
+    let extra = c
+        .addresses
+        .iter()
+        .filter(|a| matches!(a.ip, IpAddr::V6(_)))
+        .filter(|a| matches!(a.scope, AddrScope::Global))
+        .filter(|a| !a.deprecated)
+        .filter(|a| a.ip != primary)
+        .count();
+    if extra == 0 || theme::is_plain() {
+        // Plain mode: only the primary IP. Pipe consumers get the full
+        // address list via `jip --json` or `jip raw addr`.
+        primary.to_string()
+    } else {
+        let d = theme::dim();
+        format!("{primary} {d}+{extra} hidden{d:#}")
+    }
+}
+
 fn keep_default(c: &Connection) -> bool {
-    // Hide loopback and bridge/veth noise by default.
     match c.link.kind {
         LinkKind::Loopback => false,
         LinkKind::Bridge | LinkKind::Veth | LinkKind::Tun | LinkKind::Tap
@@ -58,19 +129,19 @@ fn keep_default(c: &Connection) -> bool {
     }
 }
 
-fn kind_label(kind: &LinkKind) -> String {
+fn kind_label(kind: &LinkKind) -> &'static str {
     match kind {
-        LinkKind::Ethernet => "eth".into(),
-        LinkKind::Wifi => "wifi".into(),
-        LinkKind::Loopback => "lo".into(),
-        LinkKind::Bridge => "bridge".into(),
-        LinkKind::Veth => "veth".into(),
-        LinkKind::Tun => "tun".into(),
-        LinkKind::Tap => "tap".into(),
-        LinkKind::Wireguard => "wg".into(),
-        LinkKind::Vlan => "vlan".into(),
-        LinkKind::Bond => "bond".into(),
-        LinkKind::Other(s) => s.clone(),
+        LinkKind::Ethernet => "eth",
+        LinkKind::Wifi => "wifi",
+        LinkKind::Loopback => "lo",
+        LinkKind::Bridge => "bridge",
+        LinkKind::Veth => "veth",
+        LinkKind::Tun => "tun",
+        LinkKind::Tap => "tap",
+        LinkKind::Wireguard => "wg",
+        LinkKind::Vlan => "vlan",
+        LinkKind::Bond => "bond",
+        LinkKind::Other(_) => "other",
     }
 }
 
@@ -86,6 +157,4 @@ fn state_label(c: &Connection) -> &'static str {
     }
 }
 
-fn plural(n: usize) -> &'static str {
-    if n == 1 { "" } else { "s" }
-}
+fn plural(n: usize) -> &'static str { if n == 1 { "" } else { "s" } }

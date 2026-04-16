@@ -14,6 +14,7 @@ use netcore_probe::ProbeBackend;
 use netcore_resolver::ResolverBackend;
 
 mod render;
+mod theme;
 
 #[derive(Parser, Debug)]
 #[command(
@@ -35,6 +36,32 @@ struct Cli {
     /// Disable default filters (shows loopback, docker, APIPA, etc.).
     #[arg(long, global = true)]
     all: bool,
+
+    /// Show IPv4 only.
+    #[arg(short = '4', global = true, conflicts_with = "v6_only")]
+    v4_only: bool,
+
+    /// Show IPv6 only.
+    #[arg(short = '6', global = true)]
+    v6_only: bool,
+}
+
+/// Family filter selected by `-4` / `-6` / neither.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum FamilyFilter {
+    All,
+    V4Only,
+    V6Only,
+}
+
+impl FamilyFilter {
+    fn from_flags(v4: bool, v6: bool) -> Self {
+        match (v4, v6) {
+            (true, _) => Self::V4Only,
+            (_, true) => Self::V6Only,
+            _ => Self::All,
+        }
+    }
 }
 
 #[derive(Subcommand, Debug)]
@@ -62,6 +89,11 @@ enum RawKind {
 
 fn main() -> ExitCode {
     let cli = Cli::parse();
+    // JSON output is byte-for-byte stable; don't touch terminal state in
+    // that mode so `jip --json | jq` is deterministic across envs.
+    if !cli.json {
+        theme::init();
+    }
     match run(cli) {
         Ok(code) => code,
         Err(e) => {
@@ -74,15 +106,16 @@ fn main() -> ExitCode {
 fn run(cli: Cli) -> anyhow::Result<ExitCode> {
     let json = cli.json;
     let all = cli.all;
+    let family = FamilyFilter::from_flags(cli.v4_only, cli.v6_only);
     match cli.cmd {
-        None => overview(json, all),
+        None => overview(json, all, family),
         Some(Cmd::Check) => check(json),
         Some(Cmd::Reach { target }) => reach(&target, json),
         Some(Cmd::Raw { what }) => raw(what, json),
     }
 }
 
-fn overview(json: bool, all: bool) -> anyhow::Result<ExitCode> {
+fn overview(json: bool, all: bool, family: FamilyFilter) -> anyhow::Result<ExitCode> {
     let inv = NetlinkBackend::new();
     let conns = inv.connections()?;
     let diag = build_diag();
@@ -90,7 +123,7 @@ fn overview(json: bool, all: bool) -> anyhow::Result<ExitCode> {
     if json {
         render::json::overview(&conns, &health)?;
     } else {
-        render::connection::overview(&conns, &health, all);
+        render::connection::overview(&conns, &health, all, family);
     }
     Ok(ExitCode::SUCCESS)
 }

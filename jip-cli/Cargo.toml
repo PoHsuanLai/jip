@@ -20,3 +20,6 @@ netcore-probe = { path = "../crates/netcore-probe" }
 clap = { version = "4", features = ["derive", "wrap_help"] }
 serde_json = { workspace = true }
 anyhow = { workspace = true }
+anstream = "0.6"
+anstyle = "1"
+tabled = "0.20"

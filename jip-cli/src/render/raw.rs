@@ -1,5 +1,6 @@
-//! `jip raw *` — primitives printed in an ip-compatible-ish form.
+//! `jip raw *` — primitives in an ip-compatible-ish form.
 
+use anstream::println;
 use netcore::link::{Addr, Link, Neighbor, Route, RouteDst};
 
 pub fn links(links: &[Link]) {

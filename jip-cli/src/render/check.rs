@@ -1,17 +1,21 @@
-//! `jip check` — grouped findings by layer.
+//! `jip check` — findings grouped by Layer with color-coded severity.
 
+use anstream::println;
 use netcore::diag::{Finding, Health, Layer, Remedy, Severity};
 
+use crate::theme;
+
 pub fn print(health: &Health) {
-    let (state, findings): (&str, &[Finding]) = match health {
-        Health::Ok => ("OK", &[]),
-        Health::Degraded { findings } => ("DEGRADED", findings.as_slice()),
-        Health::Broken { findings } => ("BROKEN", findings.as_slice()),
+    let (state_label, state_style, findings): (&str, anstyle::Style, &[Finding]) = match health {
+        Health::Ok => ("OK", theme::ok(), &[]),
+        Health::Degraded { findings } => ("DEGRADED", theme::warn(), findings.as_slice()),
+        Health::Broken { findings } => ("BROKEN", theme::bad(), findings.as_slice()),
     };
-    println!("check: {state}");
+    println!("check: {state_style}{state_label}{state_style:#}");
     if findings.is_empty() {
         return;
     }
+    // Fixed layer order so users see root causes first (Link → ... → Service).
     for layer in [
         Layer::Link,
         Layer::Address,
@@ -24,17 +28,19 @@ pub fn print(health: &Health) {
         let subset: Vec<&Finding> = findings.iter().filter(|f| f.layer == layer).collect();
         if subset.is_empty() { continue; }
         println!();
-        println!("[{:?}]", layer);
+        let h = theme::header();
+        println!("{h}[{layer:?}]{h:#}");
         for f in subset {
-            let sev = match f.severity {
-                Severity::Info => "info ",
-                Severity::Warn => "warn ",
-                Severity::Broken => "BROKEN",
+            let (badge, style) = match f.severity {
+                Severity::Info => ("info  ", theme::info()),
+                Severity::Warn => ("warn  ", theme::warn()),
+                Severity::Broken => ("BROKEN", theme::bad()),
             };
-            println!("  {sev} {}", f.summary);
+            println!("  {style}{badge}{style:#} {}", f.summary);
             if let Some(d) = &f.detail {
+                let dim = theme::dim();
                 for line in d.lines() {
-                    println!("         {line}");
+                    println!("         {dim}{line}{dim:#}");
                 }
             }
             match &f.remedy {

@@ -1,6 +1,9 @@
 //! `jip reach <target>` — target + path + verdict.
 
+use anstream::println;
 use netcore::path::{Path, Verdict};
+
+use crate::theme;
 
 pub fn print(path: &Path) {
     match &path.target {
@@ -39,38 +42,31 @@ pub fn print(path: &Path) {
     }
     print_probes(&path.probes);
     println!();
-    match &path.verdict {
-        Verdict::Reachable { latency_ms, family_used } => {
-            println!("verdict: REACHABLE  ({}ms, {:?})", latency_ms, family_used);
-        }
-        Verdict::PartiallyReachable { working, broken } => {
-            println!("verdict: PARTIAL    (working={:?}, broken={:?})", working, broken);
-        }
-        Verdict::DnsFailed { error } => {
-            println!("verdict: DNS FAILED ({:?})", error);
-        }
-        Verdict::NoEgress { reason } => {
-            println!("verdict: NO EGRESS  ({reason})");
-        }
-        Verdict::GatewayDown { gateway } => {
-            println!("verdict: GW DOWN    ({gateway})");
-        }
-        Verdict::PacketLoss { loss_pct } => {
-            println!("verdict: PKT LOSS   ({:.0}%)", loss_pct);
-        }
-        Verdict::TcpRefused { addr } => {
-            println!("verdict: REFUSED    ({addr})");
-        }
-        Verdict::TcpTimeout { addr } => {
-            println!("verdict: TIMEOUT    ({addr})");
-        }
-        Verdict::TlsFailed { err } => {
-            println!("verdict: TLS FAILED ({err})");
-        }
-        Verdict::HttpFailed { status } => {
-            println!("verdict: HTTP FAIL  ({status})");
-        }
-    }
+    // Color the verdict line by outcome — green for success, red for hard
+    // failure, yellow for partial. Style is closed (`:#`) before the
+    // variable text so the "REACHABLE" word gets styled but the rest stays
+    // neutral.
+    let (label, detail, style) = match &path.verdict {
+        Verdict::Reachable { latency_ms, family_used } => (
+            "REACHABLE",
+            format!("({latency_ms}ms, {family_used:?})"),
+            theme::ok(),
+        ),
+        Verdict::PartiallyReachable { working, broken } => (
+            "PARTIAL",
+            format!("(working={working:?}, broken={broken:?})"),
+            theme::warn(),
+        ),
+        Verdict::DnsFailed { error } => ("DNS FAILED", format!("({error:?})"), theme::bad()),
+        Verdict::NoEgress { reason } => ("NO EGRESS", format!("({reason})"), theme::bad()),
+        Verdict::GatewayDown { gateway } => ("GW DOWN", format!("({gateway})"), theme::bad()),
+        Verdict::PacketLoss { loss_pct } => ("PKT LOSS", format!("({loss_pct:.0}%)"), theme::warn()),
+        Verdict::TcpRefused { addr } => ("REFUSED", format!("({addr})"), theme::bad()),
+        Verdict::TcpTimeout { addr } => ("TIMEOUT", format!("({addr})"), theme::bad()),
+        Verdict::TlsFailed { err } => ("TLS FAILED", format!("({err})"), theme::bad()),
+        Verdict::HttpFailed { status } => ("HTTP FAIL", format!("({status})"), theme::bad()),
+    };
+    println!("verdict: {style}{label}{style:#}  {detail}");
     if !path.findings.is_empty() {
         println!();
         for f in &path.findings {
