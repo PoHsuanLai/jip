@@ -1,0 +1,16 @@
+[package]
+name = "netcore-netlink"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "rtnetlink backend for netcore: InventoryRaw + Inventory via Linux netlink."
+
+[dependencies]
+netcore = { path = "../netcore" }
+rtnetlink = "0.20"
+netlink-packet-route = "0.28"
+futures = "0.3"
+tokio = { version = "1", default-features = false, features = ["rt", "macros"] }
+thiserror = { workspace = true }
