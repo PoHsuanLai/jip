@@ -1,0 +1,18 @@
+[package]
+name = "netcore-probe"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Reachability backend for netcore: TCP connect + unprivileged ICMP + TLS/HTTP HEAD."
+
+[dependencies]
+netcore = { path = "../netcore" }
+socket2 = "0.6"
+libc = "0.2"
+rustls = { version = "0.23", default-features = false, features = ["ring", "logging", "std", "tls12"] }
+rustls-pki-types = "1"
+webpki-roots = "1"
+url = "2"
+thiserror = { workspace = true }

@@ -4,6 +4,7 @@ members = [
     "crates/netcore",
     "crates/netcore-diag",
     "crates/netcore-netlink",
+    "crates/netcore-probe",
     "crates/netcore-resolver",
     "jip-cli",
 ]
