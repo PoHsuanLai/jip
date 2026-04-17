@@ -69,7 +69,7 @@ where
     let mut recv_buf = vec![0u8; 65536];
     'outer: loop {
         let n = sock
-            .recv(&mut recv_buf, 0)
+            .recv(&mut &mut recv_buf[..], 0)
             .map_err(NftError::Recv)?;
 
         let mut offset = 0usize;
