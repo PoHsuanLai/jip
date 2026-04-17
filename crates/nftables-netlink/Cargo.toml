@@ -1,0 +1,19 @@
+[package]
+name = "nftables-netlink"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Pure-Rust nftables netlink client — read/write nftables tables, chains, and rules via NETLINK_NETFILTER without shelling out"
+
+[features]
+default = []
+# Enables live-kernel integration tests; requires root.
+integration = []
+
+[dependencies]
+netcore = { path = "../netcore" }
+netlink-packet-core = "0.7"
+netlink-sys = "0.8"
+libc = "0.2"
+thiserror.workspace = true

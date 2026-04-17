@@ -8,6 +8,7 @@ members = [
     "crates/netcore-nm",
     "crates/netcore-probe",
     "crates/netcore-resolver",
+    "crates/nftables-netlink",
     "jip-cli",
 ]
 

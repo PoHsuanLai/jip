@@ -786,8 +786,7 @@ name = "netcore-firewall"
 version = "0.1.0"
 dependencies = [
  "netcore",
- "serde",
- "serde_json",
+ "nftables-netlink",
  "thiserror 2.0.18",
 ]
 
@@ -936,6 +935,17 @@ dependencies = [
  "libc",
  "log",
  "tokio",
+]
+
+[[package]]
+name = "nftables-netlink"
+version = "0.1.0"
+dependencies = [
+ "libc",
+ "netcore",
+ "netlink-packet-core 0.7.0",
+ "netlink-sys",
+ "thiserror 2.0.18",
 ]
 
 [[package]]
