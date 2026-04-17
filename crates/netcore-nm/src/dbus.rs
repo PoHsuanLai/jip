@@ -54,14 +54,37 @@ pub async fn is_available() -> bool {
 pub async fn list_profiles_by_iface() -> Result<HashMap<String, Profile>> {
     let conn = bus().await?;
     let paths = list_connections(&conn).await?;
+    let active_uuids = active_connection_uuids(&conn).await;
     let mut out = HashMap::with_capacity(paths.len());
     for path in paths {
-        // Each profile read is independent; one broken profile shouldn't
-        // hide the rest.
         match get_settings(&conn, &path).await {
             Ok(s) => {
-                if let Some((iface, profile)) = profile_from_settings(&s) {
-                    out.insert(iface, profile);
+                if let Some(mut profile) = profile_from_settings_full(&s) {
+                    if let Some(ref iface) = profile.iface.clone() {
+                        profile.active = active_uuids.contains(&profile.uuid);
+                        out.insert(iface.clone(), profile);
+                    }
+                }
+            }
+            Err(_) => continue,
+        }
+    }
+    Ok(out)
+}
+
+/// Return all NM profiles regardless of whether they have a bound interface.
+/// Includes VPN, bridge, and unbound profiles.
+pub async fn list_all_profiles() -> Result<Vec<Profile>> {
+    let conn = bus().await?;
+    let paths = list_connections(&conn).await?;
+    let active_uuids = active_connection_uuids(&conn).await;
+    let mut out = Vec::with_capacity(paths.len());
+    for path in paths {
+        match get_settings(&conn, &path).await {
+            Ok(s) => {
+                if let Some(mut profile) = profile_from_settings_full(&s) {
+                    profile.active = active_uuids.contains(&profile.uuid);
+                    out.push(profile);
                 }
             }
             Err(_) => continue,
@@ -207,17 +230,31 @@ async fn get_settings(conn: &Connection, path: &OwnedObjectPath) -> Result<Setti
         .map_err(|e| Error::Backend(format!("GetSettings decode: {e}")))
 }
 
-fn profile_from_settings(s: &SettingsMap) -> Option<(String, Profile)> {
+fn profile_from_settings_full(s: &SettingsMap) -> Option<Profile> {
     let c = s.get("connection")?;
     let name = as_string(c.get("id")?)?;
+    let uuid = as_string(c.get("uuid")?).unwrap_or_default();
     let kind = as_string(c.get("type")?)?;
-    let iface = as_string(c.get("interface-name")?)?;
-    // NM omits `autoconnect` from the wire when it's the default (true).
-    let autoconnect = c
-        .get("autoconnect")
-        .and_then(as_bool)
-        .unwrap_or(true);
-    Some((iface, Profile { name, autoconnect, kind }))
+    let iface = c.get("interface-name").and_then(as_string);
+    let autoconnect = c.get("autoconnect").and_then(as_bool).unwrap_or(true);
+    Some(Profile { name, uuid, autoconnect, kind, iface, active: false })
+}
+
+/// Collect UUIDs of all currently active NM connections.
+async fn active_connection_uuids(conn: &Connection) -> std::collections::HashSet<String> {
+    let actives: Vec<OwnedObjectPath> =
+        get_property(conn, NM_PATH, NM_IFACE, "ActiveConnections")
+            .await
+            .unwrap_or_default();
+    let mut uuids = std::collections::HashSet::with_capacity(actives.len());
+    for act in actives {
+        if let Ok(uuid) =
+            get_property::<String>(conn, act.as_str(), NM_ACTIVE_IFACE, "Uuid").await
+        {
+            uuids.insert(uuid);
+        }
+    }
+    uuids
 }
 
 fn as_string(v: &OwnedValue) -> Option<String> {

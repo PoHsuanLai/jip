@@ -185,9 +185,15 @@ pub struct Gateway {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Profile {
     pub name: String,
+    /// NM connection UUID.
+    pub uuid: String,
     pub autoconnect: bool,
     /// NM's raw type string: `"802-3-ethernet"`, `"wifi"`, `"vpn"`, `"bridge"`, ...
     pub kind: String,
+    /// Interface this profile binds to, if any. `None` for VPN and unbound profiles.
+    pub iface: Option<String>,
+    /// Whether this profile is currently active (has an active connection in NM).
+    pub active: bool,
 }
 
 /// Summary of the active DHCP lease on the IPv4 address.

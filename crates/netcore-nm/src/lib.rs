@@ -47,6 +47,13 @@ impl NmBackend {
     pub fn profiles_by_iface(&self) -> Result<HashMap<String, Profile>> {
         block_on(dbus::list_profiles_by_iface())
     }
+
+    /// All NM profiles — including VPN, bridge, and unbound profiles.
+    /// Each entry includes name, kind, iface (if bound), autoconnect, and
+    /// active state resolved from NM's `ActiveConnections` property.
+    pub fn all_profiles(&self) -> Result<Vec<Profile>> {
+        block_on(dbus::list_all_profiles())
+    }
 }
 
 impl Actions for NmBackend {

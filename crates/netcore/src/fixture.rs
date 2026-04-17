@@ -374,8 +374,11 @@ impl Fixture {
             default_metric: Some(100),
             profile: Some(Profile {
                 name: "Wired connection 1".into(),
+                uuid: String::new(),
                 autoconnect: true,
                 kind: "802-3-ethernet".into(),
+                iface: Some("eth0".into()),
+                active: true,
             }),
         };
         let wlp_connection = Connection {
@@ -412,8 +415,11 @@ impl Fixture {
             default_metric: None,
             profile: Some(Profile {
                 name: "docker0".into(),
+                uuid: String::new(),
                 autoconnect: true,
                 kind: "bridge".into(),
+                iface: Some("docker0".into()),
+                active: false,
             }),
         };
         let lo_connection = Connection {
