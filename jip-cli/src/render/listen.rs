@@ -20,13 +20,14 @@ use crate::theme;
 /// exposure risk (most exposed first).
 pub fn listen(services: &[Service]) {
     let mut sorted: Vec<&Service> = services.iter().collect();
-    sorted.sort_by_key(|s| (exposure_rank(s.exposure), s.port, proto_label(s.proto)));
+    sorted.sort_by_key(|s| (exposure_rank(s.exposure), s.port, s.proto as u8));
 
-    let rows: Vec<[String; 5]> = sorted
+    let rows: Vec<[String; 6]> = sorted
         .iter()
         .map(|s| {
             [
-                addr_cell(s.port, s.proto),
+                proto_cell(s.proto),
+                port_cell(s.port),
                 bind_label(&s.bind),
                 exposure_cell(s.exposure),
                 process_label(&s.process),
@@ -37,14 +38,14 @@ pub fn listen(services: &[Service]) {
 
     if theme::is_plain() {
         for row in &rows {
-            // 4 meaningful columns (drop trailing empty)
-            println!("{}\t{}\t{}\t{}", row[0], row[1], row[2], row[3]);
+            // 5 meaningful columns (drop trailing empty)
+            println!("{}\t{}\t{}\t{}\t{}", row[0], row[1], row[2], row[3], row[4]);
         }
         return;
     }
 
     let mut b = Builder::default();
-    b.push_record(["ADDR", "BIND", "EXPOSURE", "PROCESS", ""]);
+    b.push_record(["PROTO", "PORT", "BIND", "EXPOSURE", "PROCESS", ""]);
     for row in &rows {
         b.push_record(row);
     }
@@ -88,23 +89,15 @@ fn bind_label(b: &BindScope) -> String {
     }
 }
 
-fn proto_label(p: L4Proto) -> &'static str {
+fn proto_cell(p: L4Proto) -> String {
     match p {
-        L4Proto::Tcp => "tcp",
-        L4Proto::Udp => "udp",
+        L4Proto::Tcp => theme::paint(theme::accent(), "tcp"),
+        L4Proto::Udp => theme::paint(theme::accent2(), "udp"),
     }
 }
 
-/// "port/proto" — proto colored per family (tcp blue, udp magenta) so the
-/// type of listener is identifiable at a glance. Port stays normal weight
-/// because it's the key piece of info on this row.
-fn addr_cell(port: u16, p: L4Proto) -> String {
-    let slash = theme::paint(theme::dim(), "/");
-    let proto_painted = match p {
-        L4Proto::Tcp => theme::paint(theme::accent(), proto_label(p)),
-        L4Proto::Udp => theme::paint(theme::accent2(), proto_label(p)),
-    };
-    format!("{port}{slash}{proto_painted}")
+fn port_cell(port: u16) -> String {
+    port.to_string()
 }
 
 fn process_label(p: &ProcessInfo) -> String {
