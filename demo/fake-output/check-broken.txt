@@ -1,0 +1,9 @@
+check: [31m[1mBROKEN[0m
+
+[1m[Dns][0m
+  [31m[1mBROKEN[0m DNS: upstream resolver not responding (3/3 timeouts)
+         [2m→[0m [36mtry[0m: jip reach 1.1.1.1  (bypass DNS to test raw connectivity)
+
+[1m[Link][0m
+  [33mwarn  [0m weak wifi signal: -78 dBm on Home_2G (threshold -70)
+         [2m→[0m [36mcheck[0m: run 'jip wifi' to see nearby networks

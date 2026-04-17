@@ -1,0 +1,4 @@
+ [1m[4mNAME[0m   [1m[4mKIND[0m                        [1m[4mSTATE[0m     [1m[4mIPv4[0m          [1m[4mIPv6[0m  [1m[4mGATEWAY[0m       [1m[4mPROFILE[0m
+ wlan0  wifi Office_5G (-52 dBm)  [32mUP-wifi[0m   192.168.1.55  -     [32m192.168.1.1[0m   Office_5G
+
+Health: [32mOK[0m

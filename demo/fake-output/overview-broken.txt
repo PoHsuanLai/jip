@@ -1,0 +1,6 @@
+ [1m[4mNAME[0m   [1m[4mKIND[0m                      [1m[4mSTATE[0m     [1m[4mIPv4[0m          [1m[4mIPv6[0m  [1m[4mGATEWAY[0m       [1m[4mPROFILE[0m
+ wlan0  wifi Home_2G (-78 dBm)   [33mUP-wifi[0m   192.168.1.42  -     [32m192.168.1.1[0m   Home_2G
+
+Health: [33mDEGRADED[0m (2 findings)
+  - weak wifi signal: -78 dBm on Home_2G (threshold -70)
+  - DNS: upstream resolver not responding (3/3 timeouts)

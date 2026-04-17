@@ -1,1 +1,8 @@
 /target
+
+# nftables-netlink live kernel captures — never commit binary fixtures
+crates/nftables-netlink/tests/fixtures/
+crates/nftables-netlink/src/bin/capture_fixtures.rs
+
+# VHS Chromium cache written back during recording
+demo/.cache/

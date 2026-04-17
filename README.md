@@ -1,10 +1,50 @@
 # jip
 
-A Linux network CLI that thinks in **connections**, **paths**, and **flows**
-instead of netlink families. `jip` with no args answers "is my network
-working?". `jip reach <host>` traces a single path end-to-end. `jip who`
-shows who is talking to whom, with real byte counters and RTT from the
-kernel.
+A Linux network diagnostic CLI that answers "what's wrong and why" instead of
+dumping raw kernel state.
+
+![jip demo](demo/demo.gif)
+
+## The debugging workflow
+
+```
+$ jip                        # something feels off — check the overview
+Health: DEGRADED (2 findings)
+  - weak wifi signal: -78 dBm on Home_2G
+  - DNS: upstream resolver not responding
+
+$ jip check                  # drill down
+check: BROKEN
+[Dns]  BROKEN  upstream resolver not responding (3/3 timeouts)
+               → try: jip reach 1.1.1.1
+[Link] warn    weak signal: -78 dBm on Home_2G
+               → check: run 'jip wifi' to see nearby networks
+
+$ jip wifi                   # find a better AP
+  Home_2G *    ▂▄__ 38%   2.4 GHz  WPA2
+  Office_5G    ▂▄▆█ 78%   5 GHz    WPA3
+
+$ jip use "Office_5G"        # switch
+
+$ jip reach github.com       # verify
+verdict: REACHABLE  (28ms, V4)
+```
+
+## Commands
+
+| Command | What it answers |
+|---------|-----------------|
+| `jip` | Overview: link state, IPs, gateway health |
+| `jip check` | Full diagnosis with findings and remedies |
+| `jip reach <host>` | End-to-end path: DNS → gateway → TCP/TLS |
+| `jip who` | Active flows with RTT and byte counters |
+| `jip listen` | Listening ports, protocols, firewall exposure |
+| `jip wifi` | Nearby APs: signal, band, security |
+| `jip profiles` | All NetworkManager profiles and active state |
+| `jip use <ssid>` | Connect to a network |
+| `jip autoconnect <profile> on\|off` | Toggle autoconnect |
+
+Every view supports `--json`, `-4`/`-6`, and `--all`.
 
 ## Install
 
@@ -12,21 +52,11 @@ kernel.
 cargo install --git https://github.com/PoHsuanLai/jip jip-cli
 ```
 
-Linux only.
-
-## Common commands
-
-```sh
-jip                         # overview + health
-jip check                   # full diagnosis
-jip reach cloudflare.com    # trace a path
-jip reach https://github.com
-jip who                     # established flows
-jip listen                  # listening services + exposure
-jip raw addr|link|route|neigh
-```
-
-Every view supports `--json`, `-4`/`-6`, and `--all`.
+**Requirements:**
+- Linux, kernel 5.2+
+- Rust 1.85+ (to build)
+- NetworkManager — required for `wifi`, `profiles`, `use`, `autoconnect`
+- Root or `CAP_NET_ADMIN` — needed for some `jip check` and `jip listen` details; degrades gracefully without it
 
 ## License
 

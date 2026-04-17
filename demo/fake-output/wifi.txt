@@ -1,0 +1,5 @@
+ [1m[4mSSID[0m               [1m[4mSIGNAL[0m      [1m[4mBAND[0m     [1m[4mSECURITY[0m  [1m[4mBSSID[0m
+ [1mHome_2G[0m [32m*[0m         [33m▂▄__ 38%[0m    2.4 GHz  WPA2      [2maa:bb:cc:11:22:33[0m
+ Office_5G          ▂▄▆█ 78%    [36m5 GHz[0m    [32mWPA3[0m      [2mdd:ee:ff:44:55:66[0m
+ Neighbor_2G        ▂▄▆_ 54%    2.4 GHz  WPA2      [2m11:22:33:aa:bb:cc[0m
+ CoffeeShop         [31m▂___ 18%[0m    2.4 GHz  [33mopen[0m      [2m77:88:99:dd:ee:ff[0m

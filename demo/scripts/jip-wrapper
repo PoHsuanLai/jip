@@ -1,0 +1,51 @@
+#!/bin/bash
+# Wrapper around the real jip binary.
+# Uses a statefile to simulate a "broken → fixed" network scenario:
+#   Phase 1 (before jip use): degraded wifi, DNS broken
+#   Phase 2 (after jip use):  healthy network
+
+FAKE=/demo/fake-output
+STATE=/tmp/jip-demo-state
+
+# Default to broken phase
+phase=1
+[ -f "$STATE" ] && phase=$(cat "$STATE")
+
+case "$1" in
+  listen)
+    cat "$FAKE/listen.txt"
+    ;;
+  wifi)
+    cat "$FAKE/wifi.txt"
+    ;;
+  use|reconnect|forget|autoconnect|profiles)
+    echo 2 > "$STATE"
+    cat "$FAKE/use.txt"
+    ;;
+  reach)
+    if [ "$phase" = "1" ]; then
+      printf 'target: %s\n' "${2:-github.com}"
+      sleep 3
+      tail -n +2 "$FAKE/reach-broken.txt"
+    else
+      cat "$FAKE/reach-ok.txt"
+    fi
+    ;;
+  check)
+    if [ "$phase" = "1" ]; then
+      cat "$FAKE/check-broken.txt"
+    else
+      cat "$FAKE/check-ok.txt"
+    fi
+    ;;
+  "")
+    if [ "$phase" = "1" ]; then
+      cat "$FAKE/overview-broken.txt"
+    else
+      cat "$FAKE/overview-ok.txt"
+    fi
+    ;;
+  *)
+    cat "$FAKE/overview-ok.txt"
+    ;;
+esac

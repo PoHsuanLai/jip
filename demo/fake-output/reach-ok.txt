@@ -1,0 +1,8 @@
+target: github.com
+[2mdns:   [0m github.com via systemd-resolved
+        → 20.27.177.113
+egress: wlan0 dev wlan0 src 192.168.1.55 gw 192.168.1.1
+probes: gateway ping   sent=2 recv=2 rtt=1.2ms [32mOK[0m
+        tcp 20.27.177.113:443         [32mOK[0m in 28.4ms
+
+verdict: [32mREACHABLE[0m  (28ms, V4)

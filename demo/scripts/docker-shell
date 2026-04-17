@@ -1,0 +1,3 @@
+#!/bin/bash
+# Shell wrapper that VHS uses — executes commands inside jip-demo-running
+exec docker exec -i jip-demo-running bash "$@"

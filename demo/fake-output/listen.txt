@@ -1,0 +1,7 @@
+ [1m[4mPROTO[0m  [1m[4mPORT[0m   [1m[4mBIND[0m  [1m[4mEXPOSURE[0m          [1m[4mPROCESS[0m
+ [34mtcp[0m    22     [33m*[0m     [31m[1mexposed[0m            [1msshd[0m[2m(892)[0m
+ [34mtcp[0m    80     [33m*[0m     [31m[1mexposed[0m            [1mnginx[0m[2m(1204)[0m
+ [34mtcp[0m    443    [33m*[0m     [31m[1mexposed[0m            [1mnginx[0m[2m(1204)[0m
+ [35mudp[0m    53     [2mlo[0m    [32mlocal[0m              [1msystemd-resolved[0m[2m(648)[0m
+ [34mtcp[0m    5432   [2mlo[0m    [32mlocal[0m              [1mpostgres[0m[2m(2341)[0m
+ [34mtcp[0m    8080   [2mlo[0m    [32mlocal[0m              [1mnode[0m[2m(9182)[0m

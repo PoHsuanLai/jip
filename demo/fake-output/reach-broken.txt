@@ -1,0 +1,5 @@
+target: github.com
+[2mdns:   [0m FAIL — no response from resolver (timeout after 5s)
+
+verdict: [31m[1mUNREACHABLE[0m  (dns failed)
+         [2m→[0m [36mtry[0m: jip reach 1.1.1.1  to test without DNS
