@@ -17,7 +17,7 @@
 
 use std::collections::HashMap;
 
-use netcore::connection::{ConnectionId, Profile};
+use netcore::connection::{AccessPoint, ConnectionId, Profile};
 use netcore::traits::Actions;
 use netcore::{Error, Result};
 
@@ -46,6 +46,12 @@ impl NmBackend {
     /// iface name, so there's nothing to attach them to.
     pub fn profiles_by_iface(&self) -> Result<HashMap<String, Profile>> {
         block_on(dbus::list_profiles_by_iface())
+    }
+
+    /// All access points visible to NM's wireless devices, using cached scan
+    /// results. Sorted: current AP first, then by signal strength descending.
+    pub fn access_points(&self) -> Result<Vec<AccessPoint>> {
+        block_on(dbus::scan_access_points())
     }
 
     /// All NM profiles — including VPN, bridge, and unbound profiles.

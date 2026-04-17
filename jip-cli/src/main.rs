@@ -104,6 +104,21 @@ enum Cmd {
     },
     /// List all NetworkManager profiles with active state and autoconnect flag.
     Profiles,
+    /// Show nearby wifi access points from NM's cached scan.
+    Wifi,
+    /// Enable or disable autoconnect on an NM profile.
+    Autoconnect {
+        /// Profile name or UUID.
+        profile: String,
+        /// `on` or `off`.
+        state: AutoconnectState,
+    },
+}
+
+#[derive(clap::ValueEnum, Debug, Clone, Copy)]
+enum AutoconnectState {
+    On,
+    Off,
 }
 
 #[derive(Subcommand, Debug)]
@@ -145,6 +160,8 @@ fn run(cli: Cli) -> anyhow::Result<ExitCode> {
         Some(Cmd::Reconnect { profile }) => nm_action(ActionKind::Reconnect, &profile),
         Some(Cmd::Forget { profile }) => nm_action(ActionKind::Forget, &profile),
         Some(Cmd::Profiles) => profiles(json),
+        Some(Cmd::Wifi) => wifi(json),
+        Some(Cmd::Autoconnect { profile, state }) => autoconnect(&profile, state),
     }
 }
 
@@ -216,6 +233,28 @@ fn who(json: bool) -> anyhow::Result<ExitCode> {
 /// Populate each service's [`Exposure`] from the current nftables ruleset.
 /// No-op (leaves `Exposure::Unknown`) when `nft` isn't usable — root-only,
 /// and the firewall backend itself decides whether to surface any verdict.
+fn wifi(json: bool) -> anyhow::Result<ExitCode> {
+    let Some(nm) = NmBackend::new() else {
+        anyhow::bail!("NetworkManager isn't running on this system");
+    };
+    let aps = nm.access_points()?;
+    if json {
+        println!("{}", serde_json::to_string_pretty(&aps)?);
+    } else {
+        render::wifi::wifi(&aps);
+    }
+    Ok(ExitCode::SUCCESS)
+}
+
+fn autoconnect(profile: &str, state: AutoconnectState) -> anyhow::Result<ExitCode> {
+    let Some(nm) = NmBackend::new() else {
+        anyhow::bail!("NetworkManager isn't running on this system");
+    };
+    let on = matches!(state, AutoconnectState::On);
+    nm.set_autoconnect(&ConnectionId(profile.to_string()), on)?;
+    Ok(ExitCode::SUCCESS)
+}
+
 fn profiles(json: bool) -> anyhow::Result<ExitCode> {
     let Some(nm) = NmBackend::new() else {
         anyhow::bail!("NetworkManager isn't running on this system");

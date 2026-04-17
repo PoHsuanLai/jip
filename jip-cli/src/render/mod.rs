@@ -6,3 +6,4 @@ pub mod json;
 pub mod listen;
 pub mod who;
 pub mod profiles;
+pub mod wifi;

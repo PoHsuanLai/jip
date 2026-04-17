@@ -17,7 +17,7 @@ use std::collections::HashMap;
 use zbus::Connection;
 use zbus::zvariant::{OwnedObjectPath, OwnedValue, Value};
 
-use netcore::connection::Profile;
+use netcore::connection::{AccessPoint, Profile, WifiSecurity, WifiSignal};
 use netcore::{Error, Result};
 
 const NM_BUS: &str = "org.freedesktop.NetworkManager";
@@ -27,6 +27,9 @@ const NM_SETTINGS_PATH: &str = "/org/freedesktop/NetworkManager/Settings";
 const NM_SETTINGS_IFACE: &str = "org.freedesktop.NetworkManager.Settings";
 const NM_CONN_IFACE: &str = "org.freedesktop.NetworkManager.Settings.Connection";
 const NM_ACTIVE_IFACE: &str = "org.freedesktop.NetworkManager.Connection.Active";
+const NM_DEVICE_IFACE: &str = "org.freedesktop.NetworkManager.Device";
+const NM_WIRELESS_IFACE: &str = "org.freedesktop.NetworkManager.Device.Wireless";
+const NM_AP_IFACE: &str = "org.freedesktop.NetworkManager.AccessPoint";
 
 /// NM's settings "dict of dicts" wire type. Outer key is the settings
 /// group (`"connection"`, `"ipv4"`, `"802-3-ethernet"`, ...); inner is
@@ -186,6 +189,181 @@ pub async fn set_autoconnect(name_or_uuid: &str, on: bool) -> Result<()> {
     .await
     .map_err(|e| Error::Backend(format!("Connection.Update: {e}")))?;
     Ok(())
+}
+
+/// Return all access points visible to all wireless devices NM manages.
+/// Uses NM's cached scan results — no root required, no new scan triggered.
+/// Each AP is deduplicated by BSSID; the strongest signal wins when the
+/// same BSSID appears on multiple interfaces.
+pub async fn scan_access_points() -> Result<Vec<AccessPoint>> {
+    let conn = bus().await?;
+
+    // Get all devices NM knows about.
+    let devices: Vec<OwnedObjectPath> =
+        get_property(&conn, NM_PATH, NM_IFACE, "Devices")
+            .await
+            .unwrap_or_default();
+
+    // Collect the active AP path per wireless device so we can mark in_use.
+    // Key: AP object path string; value: true = currently associated.
+    let mut active_ap_paths = std::collections::HashSet::new();
+
+    // Collect AP paths from each wireless device.
+    let mut ap_paths: Vec<(OwnedObjectPath, bool)> = Vec::new();
+
+    for dev in &devices {
+        // Check if this device is a wireless device (DeviceType == 2).
+        let dev_type: u32 = get_property(&conn, dev.as_str(), NM_DEVICE_IFACE, "DeviceType")
+            .await
+            .unwrap_or(0);
+        if dev_type != 2 {
+            continue;
+        }
+
+        // Record the active AP for this device.
+        if let Ok(active_ap) =
+            get_property::<OwnedObjectPath>(&conn, dev.as_str(), NM_WIRELESS_IFACE, "ActiveAccessPoint")
+                .await
+        {
+            if active_ap.as_str() != "/" {
+                active_ap_paths.insert(active_ap.as_str().to_string());
+            }
+        }
+
+        // GetAccessPoints returns all APs in the cached scan table.
+        let aps: Vec<OwnedObjectPath> = match conn
+            .call_method(
+                Some(NM_BUS),
+                dev.as_str(),
+                Some(NM_WIRELESS_IFACE),
+                "GetAllAccessPoints",
+                &(),
+            )
+            .await
+            .and_then(|m| m.body().deserialize())
+        {
+            Ok(v) => v,
+            Err(_) => continue,
+        };
+
+        for ap in aps {
+            let in_use = active_ap_paths.contains(ap.as_str());
+            ap_paths.push((ap, in_use));
+        }
+    }
+
+    // Deduplicate by BSSID, keeping strongest signal.
+    let mut by_bssid: std::collections::HashMap<String, AccessPoint> =
+        std::collections::HashMap::new();
+
+    for (path, in_use) in ap_paths {
+        if let Some(ap) = read_access_point(&conn, &path, in_use).await {
+            let entry = by_bssid.entry(ap.bssid.clone()).or_insert_with(|| ap.clone());
+            if ap.signal.rssi_dbm > entry.signal.rssi_dbm {
+                *entry = ap;
+            }
+        }
+    }
+
+    let mut aps: Vec<AccessPoint> = by_bssid.into_values().collect();
+    // Sort: in-use first, then by signal strength descending.
+    aps.sort_by_key(|a| (!a.in_use, -(a.signal.rssi_dbm)));
+    Ok(aps)
+}
+
+async fn read_access_point(
+    conn: &Connection,
+    path: &OwnedObjectPath,
+    in_use: bool,
+) -> Option<AccessPoint> {
+    let ssid_bytes: Vec<u8> =
+        get_property(conn, path.as_str(), NM_AP_IFACE, "Ssid")
+            .await
+            .unwrap_or_default();
+    let ssid = String::from_utf8_lossy(&ssid_bytes).into_owned();
+    let bssid: String =
+        get_property(conn, path.as_str(), NM_AP_IFACE, "HwAddress")
+            .await
+            .unwrap_or_default();
+    let strength: u8 =
+        get_property(conn, path.as_str(), NM_AP_IFACE, "Strength")
+            .await
+            .unwrap_or(0);
+    let frequency_mhz: u32 =
+        get_property(conn, path.as_str(), NM_AP_IFACE, "Frequency")
+            .await
+            .unwrap_or(0);
+    let max_bitrate_kbps: u32 =
+        get_property(conn, path.as_str(), NM_AP_IFACE, "MaxBitrate")
+            .await
+            .unwrap_or(0);
+    let wpa_flags: u32 =
+        get_property(conn, path.as_str(), NM_AP_IFACE, "WpaFlags")
+            .await
+            .unwrap_or(0);
+    let rsn_flags: u32 =
+        get_property(conn, path.as_str(), NM_AP_IFACE, "RsnFlags")
+            .await
+            .unwrap_or(0);
+    let ap_flags: u32 =
+        get_property(conn, path.as_str(), NM_AP_IFACE, "Flags")
+            .await
+            .unwrap_or(0);
+
+    // NM Strength is 0–100; convert to approximate dBm (-90 to -30).
+    let rssi_dbm = strength_to_dbm(strength);
+    let rate_mbps = if max_bitrate_kbps > 0 { Some(max_bitrate_kbps / 1000) } else { None };
+
+    let security = decode_security(ap_flags, wpa_flags, rsn_flags);
+
+    Some(AccessPoint {
+        ssid,
+        bssid,
+        signal: WifiSignal { rssi_dbm, quality_pct: Some(strength), rate_mbps },
+        frequency_mhz,
+        security,
+        in_use,
+    })
+}
+
+/// Convert NM's 0–100 strength percentage to approximate dBm.
+/// Mapping: 100 → -30 dBm, 0 → -90 dBm.
+fn strength_to_dbm(strength: u8) -> i32 {
+    let s = strength.min(100) as i32;
+    -90 + (s * 60 / 100)
+}
+
+/// Decode NM's AP flags + WPA/RSN flags into a WifiSecurity variant.
+///
+/// ap_flags bit 0 = NM_802_11_AP_FLAGS_PRIVACY (any encryption)
+/// rsn_flags bit 9 = NM_802_11_AP_SEC_KEY_MGMT_SAE (WPA3-Personal)
+/// rsn_flags bit 5 = NM_802_11_AP_SEC_KEY_MGMT_802_1X (WPA2/WPA3-Enterprise)
+/// rsn_flags bit 4 = NM_802_11_AP_SEC_KEY_MGMT_PSK (WPA2-Personal)
+/// wpa_flags bit 4 = NM_802_11_AP_SEC_KEY_MGMT_PSK (WPA1-Personal)
+fn decode_security(ap_flags: u32, wpa_flags: u32, rsn_flags: u32) -> WifiSecurity {
+    let privacy = ap_flags & 0x1 != 0;
+    let rsn_sae = rsn_flags & (1 << 9) != 0;           // WPA3-Personal (SAE)
+    let rsn_eap = rsn_flags & (1 << 5) != 0;           // WPA2/WPA3-Enterprise (802.1X)
+    let rsn_psk = rsn_flags & (1 << 4) != 0;           // WPA2-Personal (PSK)
+    let wpa_eap = wpa_flags & (1 << 5) != 0;           // WPA1-Enterprise
+    let wpa_psk = wpa_flags & (1 << 4) != 0;           // WPA1-Personal
+
+    if rsn_sae && rsn_eap {
+        WifiSecurity::Wpa3Enterprise
+    } else if rsn_sae {
+        WifiSecurity::Wpa3Personal
+    } else if rsn_eap || wpa_eap {
+        WifiSecurity::Wpa2Enterprise
+    } else if rsn_psk {
+        WifiSecurity::Wpa2Personal
+    } else if wpa_psk {
+        // WPA1-only; rare on modern networks
+        WifiSecurity::Other("wpa".into())
+    } else if privacy {
+        WifiSecurity::Wep
+    } else {
+        WifiSecurity::Open
+    }
 }
 
 // --- helpers ---------------------------------------------------------

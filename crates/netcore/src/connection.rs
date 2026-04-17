@@ -170,6 +170,23 @@ pub enum WifiSecurity {
     Other(String),
 }
 
+/// A nearby wifi access point from an NM scan.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AccessPoint {
+    /// Network name. Empty string when the SSID is hidden.
+    pub ssid: String,
+    /// BSSID (MAC address of the AP).
+    pub bssid: String,
+    /// Signal strength.
+    pub signal: WifiSignal,
+    /// Channel frequency in MHz (e.g. 2412, 5180).
+    pub frequency_mhz: u32,
+    /// Security classification decoded from NM's WpaFlags/RsnFlags.
+    pub security: WifiSecurity,
+    /// `true` when this is the currently associated AP.
+    pub in_use: bool,
+}
+
 /// The L3 default-route next-hop plus its L2 ARP/ND state. Having both lets
 /// the diagnostician say "your route points at 192.168.1.1 but it's not
 /// answering ARP" rather than just "unreachable".
