@@ -6,9 +6,11 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 description = "rtnetlink backend for netcore: InventoryRaw + Inventory via Linux netlink."
+keywords = ["networking", "linux", "netlink", "rtnetlink"]
+categories = ["network-programming", "os::linux-apis"]
 
 [dependencies]
-netcore = { path = "../netcore" }
+netcore = { path = "../netcore", version = "0.1" }
 rtnetlink = "0.20"
 netlink-packet-route = "0.28"
 netlink-packet-sock-diag = { version = "0.4", features = ["rich_nlas"] }

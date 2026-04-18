@@ -6,9 +6,11 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 description = "NetworkManager (D-Bus / zbus) backend for netcore: Profile lookup + Actions."
+keywords = ["networking", "linux", "networkmanager", "dbus"]
+categories = ["network-programming", "os::linux-apis"]
 
 [dependencies]
-netcore = { path = "../netcore" }
+netcore = { path = "../netcore", version = "0.1" }
 zbus = { version = "5", default-features = false, features = ["tokio"] }
 tokio = { version = "1", default-features = false, features = ["rt", "macros"] }
 thiserror = { workspace = true }

@@ -6,8 +6,10 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 description = "Firewall backend for netcore: nftables netlink → FirewallVerdict."
+keywords = ["networking", "linux", "nftables", "firewall"]
+categories = ["network-programming", "os::linux-apis"]
 
 [dependencies]
-netcore = { path = "../netcore" }
-nftables-netlink = { path = "../nftables-netlink" }
+netcore = { path = "../netcore", version = "0.1" }
+nftables-netlink = { path = "../nftables-netlink", version = "0.1" }
 thiserror = { workspace = true }

@@ -6,6 +6,8 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 description = "Domain types and capability traits for the jip network CLI."
+keywords = ["networking", "linux", "diagnostics"]
+categories = ["network-programming", "os::linux-apis"]
 
 [features]
 default = []

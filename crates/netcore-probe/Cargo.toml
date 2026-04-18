@@ -6,9 +6,11 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 description = "Reachability backend for netcore: TCP connect + unprivileged ICMP + TLS/HTTP HEAD."
+keywords = ["networking", "linux", "icmp", "probe"]
+categories = ["network-programming", "os::linux-apis"]
 
 [dependencies]
-netcore = { path = "../netcore" }
+netcore = { path = "../netcore", version = "0.1" }
 socket2 = "0.6"
 libc = "0.2"
 rustls = { version = "0.23", default-features = false, features = ["ring", "logging", "std", "tls12"] }

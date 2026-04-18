@@ -4,7 +4,10 @@ version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
+repository.workspace = true
 description = "Pure-Rust nftables netlink client — read/write nftables tables, chains, and rules via NETLINK_NETFILTER without shelling out"
+keywords = ["nftables", "netlink", "linux", "firewall", "networking"]
+categories = ["network-programming", "os::linux-apis"]
 
 [features]
 default = []
@@ -12,7 +15,7 @@ default = []
 integration = []
 
 [dependencies]
-netcore = { path = "../netcore" }
+netcore = { path = "../netcore", version = "0.1" }
 netlink-packet-core = "0.7"
 netlink-sys = "0.8"
 libc = "0.2"

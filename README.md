@@ -1,5 +1,9 @@
 # jip
 
+[![CI](https://github.com/PoHsuanLai/jip/actions/workflows/ci.yml/badge.svg)](https://github.com/PoHsuanLai/jip/actions/workflows/ci.yml)
+[![Crates.io](https://img.shields.io/crates/v/jip-cli.svg)](https://crates.io/crates/jip-cli)
+[![License](https://img.shields.io/crates/l/jip-cli.svg)](LICENSE-MIT)
+
 A Linux network diagnostic CLI that answers "what's wrong and why" instead of
 dumping raw kernel state.
 
@@ -57,7 +61,13 @@ tar -xzf jip.tar.gz && sudo mv jip /usr/local/bin/
 
 Replace `x86_64` with `aarch64` for ARM. Use `-gnu` instead of `-musl` if you prefer glibc.
 
-**From source** (requires Rust 1.85+):
+**From crates.io** (requires Rust 1.85+):
+
+```sh
+cargo install jip-cli
+```
+
+**From source:**
 
 ```sh
 cargo install --git https://github.com/PoHsuanLai/jip jip-cli
