@@ -52,14 +52,13 @@ Every view supports `--json`, `-4`/`-6`, and `--all`.
 
 ## Install
 
-**Prebuilt binary** (recommended):
+**Prebuilt binary** (recommended, no Rust required):
 
 ```sh
-curl -Lo jip.tar.gz https://github.com/PoHsuanLai/jip/releases/latest/download/jip-latest-x86_64-unknown-linux-musl.tar.gz
-tar -xzf jip.tar.gz && sudo mv jip /usr/local/bin/
+curl -sSfL https://github.com/PoHsuanLai/jip/releases/latest/download/install.sh | sh
 ```
 
-Replace `x86_64` with `aarch64` for ARM. Use `-gnu` instead of `-musl` if you prefer glibc.
+Detects your architecture automatically (x86_64 / aarch64). Installs to `/usr/local/bin` by default — override with `INSTALL_DIR=~/.local/bin`.
 
 **From crates.io** (requires Rust 1.85+):
 
