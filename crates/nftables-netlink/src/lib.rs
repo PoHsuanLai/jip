@@ -20,7 +20,9 @@ pub mod objects;
 pub mod ops;
 
 pub use error::NftError;
-pub use objects::{ChainPolicy, Expr, NftChain, NftHook, NftRule, NftTable, PortMatch, RuleVerdict};
+pub use objects::{
+    ChainPolicy, Expr, NftChain, NftHook, NftRule, NftTable, PortMatch, RuleVerdict,
+};
 
 /// Handle to the nftables netlink socket.
 ///
@@ -34,14 +36,13 @@ impl NftNetlinkHandle {
     pub fn open() -> Result<Self, NftError> {
         // Probe by attempting to open the socket. The actual socket is opened
         // per-operation to avoid holding an fd open indefinitely.
-        let _probe = netlink_sys::Socket::new(constants::NETLINK_NETFILTER)
-            .map_err(|e| {
-                if e.raw_os_error() == Some(libc::EPERM) {
-                    NftError::MissingCapability
-                } else {
-                    NftError::Socket(e)
-                }
-            })?;
+        let _probe = netlink_sys::Socket::new(constants::NETLINK_NETFILTER).map_err(|e| {
+            if e.raw_os_error() == Some(libc::EPERM) {
+                NftError::MissingCapability
+            } else {
+                NftError::Socket(e)
+            }
+        })?;
         Ok(Self)
     }
 

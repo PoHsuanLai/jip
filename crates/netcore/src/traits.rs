@@ -70,12 +70,8 @@ pub trait Reachability: Send + Sync {
     /// Attempt a TCP three-way handshake to `sa` within `timeout`.
     fn tcp_connect(&self, sa: SocketAddr, timeout: Duration) -> Result<TcpProbeResult>;
     /// Perform a TLS handshake to `sa` with the given SNI within `timeout`.
-    fn tls_handshake(
-        &self,
-        sa: SocketAddr,
-        sni: &str,
-        timeout: Duration,
-    ) -> Result<TlsProbeResult>;
+    fn tls_handshake(&self, sa: SocketAddr, sni: &str, timeout: Duration)
+    -> Result<TlsProbeResult>;
     /// Issue an HTTP HEAD request to `url` within `timeout`.
     fn http_head(&self, url: &Url, timeout: Duration) -> Result<HttpProbeResult>;
     /// Run a traceroute to `ip` using `opts`.

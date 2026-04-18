@@ -35,7 +35,11 @@ pub fn init() {
     let force = std::env::var("CLICOLOR_FORCE")
         .ok()
         .is_some_and(|v| !v.is_empty() && v != "0");
-    let mode = if tty || force { Mode::Pretty } else { Mode::Plain };
+    let mode = if tty || force {
+        Mode::Pretty
+    } else {
+        Mode::Plain
+    };
     let _ = MODE.set(mode);
 }
 
@@ -46,7 +50,9 @@ pub fn mode() -> Mode {
 }
 
 /// Return `true` when output is going to a non-TTY (pipe / file).
-pub fn is_plain() -> bool { mode() == Mode::Plain }
+pub fn is_plain() -> bool {
+    mode() == Mode::Plain
+}
 
 // --- palette ---------------------------------------------------------
 // All render modules draw from these; swap here to change the whole CLI.
@@ -61,7 +67,9 @@ pub fn dim() -> Style {
 }
 /// Bold green for a healthy / successful state.
 pub fn ok() -> Style {
-    Style::new().fg_color(Some(Color::Ansi(AnsiColor::Green))).bold()
+    Style::new()
+        .fg_color(Some(Color::Ansi(AnsiColor::Green)))
+        .bold()
 }
 /// Regular green for a healthy state without strong emphasis.
 pub fn ok_soft() -> Style {
@@ -73,7 +81,9 @@ pub fn warn() -> Style {
 }
 /// Bold red for a broken or error state.
 pub fn bad() -> Style {
-    Style::new().fg_color(Some(Color::Ansi(AnsiColor::Red))).bold()
+    Style::new()
+        .fg_color(Some(Color::Ansi(AnsiColor::Red)))
+        .bold()
 }
 /// Cyan for informational annotations.
 pub fn info() -> Style {

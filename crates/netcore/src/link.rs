@@ -80,11 +80,17 @@ impl LinkFlags {
         self.0.iter().any(|f| f.eq_ignore_ascii_case(flag))
     }
     /// Return `true` when `IFF_LOOPBACK` is set.
-    pub fn is_loopback(&self) -> bool { self.has("LOOPBACK") }
+    pub fn is_loopback(&self) -> bool {
+        self.has("LOOPBACK")
+    }
     /// Return `true` when `IFF_LOWER_UP` is set (physical layer is up).
-    pub fn lower_up(&self) -> bool { self.has("LOWER_UP") }
+    pub fn lower_up(&self) -> bool {
+        self.has("LOWER_UP")
+    }
     /// Return `true` when the link is administratively up but has no carrier.
-    pub fn no_carrier(&self) -> bool { self.has("NO-CARRIER") }
+    pub fn no_carrier(&self) -> bool {
+        self.has("NO-CARRIER")
+    }
 }
 
 /// Six-byte link-layer address. Displayed as `aa:bb:cc:dd:ee:ff`.

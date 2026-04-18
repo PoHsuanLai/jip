@@ -5,7 +5,7 @@ use std::net::IpAddr;
 use anstream::println;
 use tabled::{
     builder::Builder,
-    settings::{Style, object::Rows, themes::Colorization, Color as TabColor},
+    settings::{Color as TabColor, Style, object::Rows, themes::Colorization},
 };
 
 use netcore::connection::{Connection, Medium};
@@ -42,7 +42,9 @@ pub fn overview(conns: &[Connection], health: &Health, all: bool, family: Family
         }
     } else {
         let mut b = Builder::default();
-        b.push_record(["NAME", "KIND", "STATE", "IPv4", "IPv6", "GATEWAY", "PROFILE"]);
+        b.push_record([
+            "NAME", "KIND", "STATE", "IPv4", "IPv6", "GATEWAY", "PROFILE",
+        ]);
         for row in &rows {
             b.push_record(row);
         }
@@ -88,7 +90,9 @@ fn print_health_line(health: &Health) {
 }
 
 fn v4_cell(c: &Connection, family: FamilyFilter) -> String {
-    if family == FamilyFilter::V6Only { return theme::dim_placeholder("-"); }
+    if family == FamilyFilter::V6Only {
+        return theme::dim_placeholder("-");
+    }
     match c.primary_v4 {
         Some(ip) => ip.to_string(),
         None => theme::dim_placeholder("-"),
@@ -100,7 +104,9 @@ fn v4_cell(c: &Connection, family: FamilyFilter) -> String {
 /// don't count — users care about "how many real outgoing addresses are
 /// there that I'm not seeing?".
 fn v6_cell(c: &Connection, family: FamilyFilter) -> String {
-    if family == FamilyFilter::V4Only { return theme::dim_placeholder("-"); }
+    if family == FamilyFilter::V4Only {
+        return theme::dim_placeholder("-");
+    }
     let primary = match c.primary_v6 {
         Some(ip) => ip,
         None => return theme::dim_placeholder("-"),
@@ -140,7 +146,9 @@ fn profile_cell(c: &Connection) -> String {
 }
 
 fn gateway_cell(c: &Connection) -> String {
-    let Some(g) = c.gateway.as_ref() else { return theme::dim_placeholder("-"); };
+    let Some(g) = c.gateway.as_ref() else {
+        return theme::dim_placeholder("-");
+    };
     let ip = g.ip.to_string();
     // Color the IP by the gateway's ARP state — that's the whole reason
     // we carry NeighState alongside the route target.
@@ -188,7 +196,11 @@ fn kind_label(kind: &LinkKind) -> &'static str {
 fn kind_cell(c: &Connection) -> String {
     let base = kind_label(&c.link.kind);
     match &c.medium {
-        Medium::Wifi { ssid: Some(name), signal, .. } => match signal {
+        Medium::Wifi {
+            ssid: Some(name),
+            signal,
+            ..
+        } => match signal {
             Some(s) => format!("{base} {name} ({} dBm)", s.rssi_dbm),
             None => format!("{base} {name}"),
         },
@@ -212,4 +224,6 @@ fn state_cell(c: &Connection) -> String {
     theme::paint(style, label)
 }
 
-fn plural(n: usize) -> &'static str { if n == 1 { "" } else { "s" } }
+fn plural(n: usize) -> &'static str {
+    if n == 1 { "" } else { "s" }
+}

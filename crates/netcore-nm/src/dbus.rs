@@ -37,7 +37,9 @@ const NM_AP_IFACE: &str = "org.freedesktop.NetworkManager.AccessPoint";
 type SettingsMap = HashMap<String, HashMap<String, OwnedValue>>;
 
 pub async fn is_available() -> bool {
-    let Ok(conn) = Connection::system().await else { return false; };
+    let Ok(conn) = Connection::system().await else {
+        return false;
+    };
     let reply: zbus::Result<bool> = conn
         .call_method(
             Some("org.freedesktop.DBus"),
@@ -148,7 +150,9 @@ pub async fn deactivate_connection(name_or_uuid: &str) -> Result<()> {
             return Ok(());
         }
     }
-    Err(Error::NotFound(format!("no active connection named {name_or_uuid}")))
+    Err(Error::NotFound(format!(
+        "no active connection named {name_or_uuid}"
+    )))
 }
 
 pub async fn delete_connection(name_or_uuid: &str) -> Result<()> {
@@ -199,10 +203,9 @@ pub async fn scan_access_points() -> Result<Vec<AccessPoint>> {
     let conn = bus().await?;
 
     // Get all devices NM knows about.
-    let devices: Vec<OwnedObjectPath> =
-        get_property(&conn, NM_PATH, NM_IFACE, "Devices")
-            .await
-            .unwrap_or_default();
+    let devices: Vec<OwnedObjectPath> = get_property(&conn, NM_PATH, NM_IFACE, "Devices")
+        .await
+        .unwrap_or_default();
 
     // Collect the active AP path per wireless device so we can mark in_use.
     // Key: AP object path string; value: true = currently associated.
@@ -221,9 +224,13 @@ pub async fn scan_access_points() -> Result<Vec<AccessPoint>> {
         }
 
         // Record the active AP for this device.
-        if let Ok(active_ap) =
-            get_property::<OwnedObjectPath>(&conn, dev.as_str(), NM_WIRELESS_IFACE, "ActiveAccessPoint")
-                .await
+        if let Ok(active_ap) = get_property::<OwnedObjectPath>(
+            &conn,
+            dev.as_str(),
+            NM_WIRELESS_IFACE,
+            "ActiveAccessPoint",
+        )
+        .await
         {
             if active_ap.as_str() != "/" {
                 active_ap_paths.insert(active_ap.as_str().to_string());
@@ -258,7 +265,9 @@ pub async fn scan_access_points() -> Result<Vec<AccessPoint>> {
 
     for (path, in_use) in ap_paths {
         if let Some(ap) = read_access_point(&conn, &path, in_use).await {
-            let entry = by_bssid.entry(ap.bssid.clone()).or_insert_with(|| ap.clone());
+            let entry = by_bssid
+                .entry(ap.bssid.clone())
+                .or_insert_with(|| ap.clone());
             if ap.signal.rssi_dbm > entry.signal.rssi_dbm {
                 *entry = ap;
             }
@@ -276,50 +285,50 @@ async fn read_access_point(
     path: &OwnedObjectPath,
     in_use: bool,
 ) -> Option<AccessPoint> {
-    let ssid_bytes: Vec<u8> =
-        get_property(conn, path.as_str(), NM_AP_IFACE, "Ssid")
-            .await
-            .unwrap_or_default();
+    let ssid_bytes: Vec<u8> = get_property(conn, path.as_str(), NM_AP_IFACE, "Ssid")
+        .await
+        .unwrap_or_default();
     let ssid = String::from_utf8_lossy(&ssid_bytes).into_owned();
-    let bssid: String =
-        get_property(conn, path.as_str(), NM_AP_IFACE, "HwAddress")
-            .await
-            .unwrap_or_default();
-    let strength: u8 =
-        get_property(conn, path.as_str(), NM_AP_IFACE, "Strength")
-            .await
-            .unwrap_or(0);
-    let frequency_mhz: u32 =
-        get_property(conn, path.as_str(), NM_AP_IFACE, "Frequency")
-            .await
-            .unwrap_or(0);
-    let max_bitrate_kbps: u32 =
-        get_property(conn, path.as_str(), NM_AP_IFACE, "MaxBitrate")
-            .await
-            .unwrap_or(0);
-    let wpa_flags: u32 =
-        get_property(conn, path.as_str(), NM_AP_IFACE, "WpaFlags")
-            .await
-            .unwrap_or(0);
-    let rsn_flags: u32 =
-        get_property(conn, path.as_str(), NM_AP_IFACE, "RsnFlags")
-            .await
-            .unwrap_or(0);
-    let ap_flags: u32 =
-        get_property(conn, path.as_str(), NM_AP_IFACE, "Flags")
-            .await
-            .unwrap_or(0);
+    let bssid: String = get_property(conn, path.as_str(), NM_AP_IFACE, "HwAddress")
+        .await
+        .unwrap_or_default();
+    let strength: u8 = get_property(conn, path.as_str(), NM_AP_IFACE, "Strength")
+        .await
+        .unwrap_or(0);
+    let frequency_mhz: u32 = get_property(conn, path.as_str(), NM_AP_IFACE, "Frequency")
+        .await
+        .unwrap_or(0);
+    let max_bitrate_kbps: u32 = get_property(conn, path.as_str(), NM_AP_IFACE, "MaxBitrate")
+        .await
+        .unwrap_or(0);
+    let wpa_flags: u32 = get_property(conn, path.as_str(), NM_AP_IFACE, "WpaFlags")
+        .await
+        .unwrap_or(0);
+    let rsn_flags: u32 = get_property(conn, path.as_str(), NM_AP_IFACE, "RsnFlags")
+        .await
+        .unwrap_or(0);
+    let ap_flags: u32 = get_property(conn, path.as_str(), NM_AP_IFACE, "Flags")
+        .await
+        .unwrap_or(0);
 
     // NM Strength is 0–100; convert to approximate dBm (-90 to -30).
     let rssi_dbm = strength_to_dbm(strength);
-    let rate_mbps = if max_bitrate_kbps > 0 { Some(max_bitrate_kbps / 1000) } else { None };
+    let rate_mbps = if max_bitrate_kbps > 0 {
+        Some(max_bitrate_kbps / 1000)
+    } else {
+        None
+    };
 
     let security = decode_security(ap_flags, wpa_flags, rsn_flags);
 
     Some(AccessPoint {
         ssid,
         bssid,
-        signal: WifiSignal { rssi_dbm, quality_pct: Some(strength), rate_mbps },
+        signal: WifiSignal {
+            rssi_dbm,
+            quality_pct: Some(strength),
+            rate_mbps,
+        },
         frequency_mhz,
         security,
         in_use,
@@ -342,11 +351,11 @@ fn strength_to_dbm(strength: u8) -> i32 {
 /// wpa_flags bit 4 = NM_802_11_AP_SEC_KEY_MGMT_PSK (WPA1-Personal)
 fn decode_security(ap_flags: u32, wpa_flags: u32, rsn_flags: u32) -> WifiSecurity {
     let privacy = ap_flags & 0x1 != 0;
-    let rsn_sae = rsn_flags & (1 << 9) != 0;           // WPA3-Personal (SAE)
-    let rsn_eap = rsn_flags & (1 << 5) != 0;           // WPA2/WPA3-Enterprise (802.1X)
-    let rsn_psk = rsn_flags & (1 << 4) != 0;           // WPA2-Personal (PSK)
-    let wpa_eap = wpa_flags & (1 << 5) != 0;           // WPA1-Enterprise
-    let wpa_psk = wpa_flags & (1 << 4) != 0;           // WPA1-Personal
+    let rsn_sae = rsn_flags & (1 << 9) != 0; // WPA3-Personal (SAE)
+    let rsn_eap = rsn_flags & (1 << 5) != 0; // WPA2/WPA3-Enterprise (802.1X)
+    let rsn_psk = rsn_flags & (1 << 4) != 0; // WPA2-Personal (PSK)
+    let wpa_eap = wpa_flags & (1 << 5) != 0; // WPA1-Enterprise
+    let wpa_psk = wpa_flags & (1 << 4) != 0; // WPA1-Personal
 
     if rsn_sae && rsn_eap {
         WifiSecurity::Wpa3Enterprise
@@ -415,19 +424,24 @@ fn profile_from_settings_full(s: &SettingsMap) -> Option<Profile> {
     let kind = as_string(c.get("type")?)?;
     let iface = c.get("interface-name").and_then(as_string);
     let autoconnect = c.get("autoconnect").and_then(as_bool).unwrap_or(true);
-    Some(Profile { name, uuid, autoconnect, kind, iface, active: false })
+    Some(Profile {
+        name,
+        uuid,
+        autoconnect,
+        kind,
+        iface,
+        active: false,
+    })
 }
 
 /// Collect UUIDs of all currently active NM connections.
 async fn active_connection_uuids(conn: &Connection) -> std::collections::HashSet<String> {
-    let actives: Vec<OwnedObjectPath> =
-        get_property(conn, NM_PATH, NM_IFACE, "ActiveConnections")
-            .await
-            .unwrap_or_default();
+    let actives: Vec<OwnedObjectPath> = get_property(conn, NM_PATH, NM_IFACE, "ActiveConnections")
+        .await
+        .unwrap_or_default();
     let mut uuids = std::collections::HashSet::with_capacity(actives.len());
     for act in actives {
-        if let Ok(uuid) =
-            get_property::<String>(conn, act.as_str(), NM_ACTIVE_IFACE, "Uuid").await
+        if let Ok(uuid) = get_property::<String>(conn, act.as_str(), NM_ACTIVE_IFACE, "Uuid").await
         {
             uuids.insert(uuid);
         }
@@ -445,10 +459,7 @@ fn as_bool(v: &OwnedValue) -> Option<bool> {
 
 /// Find a profile object path by either `connection.id` or `connection.uuid`.
 /// Prefers `id` match (human-readable) so callers can pass "Wired connection 1".
-async fn resolve_connection_path(
-    conn: &Connection,
-    name_or_uuid: &str,
-) -> Result<OwnedObjectPath> {
+async fn resolve_connection_path(conn: &Connection, name_or_uuid: &str) -> Result<OwnedObjectPath> {
     // Fast path: UUID lookup is a single dedicated call.
     if looks_like_uuid(name_or_uuid) {
         let reply = conn
@@ -478,7 +489,9 @@ async fn resolve_connection_path(
             }
         }
     }
-    Err(Error::NotFound(format!("no NM connection named {name_or_uuid}")))
+    Err(Error::NotFound(format!(
+        "no NM connection named {name_or_uuid}"
+    )))
 }
 
 fn looks_like_uuid(s: &str) -> bool {
@@ -495,12 +508,7 @@ fn strip_readonly(s: &mut SettingsMap) {
     }
 }
 
-async fn get_property<T>(
-    conn: &Connection,
-    path: &str,
-    iface: &str,
-    name: &str,
-) -> Result<T>
+async fn get_property<T>(conn: &Connection, path: &str, iface: &str, name: &str) -> Result<T>
 where
     T: TryFrom<OwnedValue>,
 {

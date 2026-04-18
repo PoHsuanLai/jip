@@ -5,7 +5,9 @@ pub enum NftError {
     #[error("failed to open NETLINK_NETFILTER socket: {0}")]
     Socket(std::io::Error),
 
-    #[error("missing capability — CAP_NET_ADMIN required for write; read requires Linux 5.2+ for unprivileged access")]
+    #[error(
+        "missing capability — CAP_NET_ADMIN required for write; read requires Linux 5.2+ for unprivileged access"
+    )]
     MissingCapability,
 
     #[error("netlink send failed: {0}")]

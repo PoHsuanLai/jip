@@ -16,17 +16,13 @@ use crate::Result;
 use crate::connection::{
     Connection, ConnectionId, DhcpLease, Family, Gateway, Medium, Profile, VirtualKind,
 };
-use crate::diag::{
-    FirewallBackend, FirewallVerdict, PingOpts, ProbeCapabilities, TraceOpts,
-};
+use crate::diag::{FirewallBackend, FirewallVerdict, PingOpts, ProbeCapabilities, TraceOpts};
 use crate::dns::{DnsAnswer, DnsError, DnsResolution, DnsSource};
 use crate::link::{
-    Addr, AddrScope, L4Proto, Lifetime, Link, LinkFlags, LinkKind, LinkMode, MacAddr, Neighbor,
-    NeighState, OperState, Route, RouteDst, RouteScope, Socket, TcpState,
+    Addr, AddrScope, L4Proto, Lifetime, Link, LinkFlags, LinkKind, LinkMode, MacAddr, NeighState,
+    Neighbor, OperState, Route, RouteDst, RouteScope, Socket, TcpState,
 };
-use crate::path::{
-    Egress, Hop, HttpProbeResult, PingResult, TcpProbeResult, TlsProbeResult,
-};
+use crate::path::{Egress, Hop, HttpProbeResult, PingResult, TcpProbeResult, TlsProbeResult};
 use crate::process::{ProcessInfo, ProcessRef};
 use crate::service::{BindScope, Exposure, Flow, Service};
 use crate::traits::{Firewall, Inventory, InventoryRaw, Reachability, Resolver};
@@ -648,17 +644,33 @@ impl Fixture {
 }
 
 impl InventoryRaw for Fixture {
-    fn links(&self) -> Result<Vec<Link>> { Ok(self.links.clone()) }
-    fn addrs(&self) -> Result<Vec<(u32, Addr)>> { Ok(self.addrs.clone()) }
-    fn routes(&self) -> Result<Vec<Route>> { Ok(self.routes.clone()) }
-    fn neighbors(&self) -> Result<Vec<Neighbor>> { Ok(self.neighbors.clone()) }
-    fn sockets(&self) -> Result<Vec<Socket>> { Ok(self.sockets.clone()) }
+    fn links(&self) -> Result<Vec<Link>> {
+        Ok(self.links.clone())
+    }
+    fn addrs(&self) -> Result<Vec<(u32, Addr)>> {
+        Ok(self.addrs.clone())
+    }
+    fn routes(&self) -> Result<Vec<Route>> {
+        Ok(self.routes.clone())
+    }
+    fn neighbors(&self) -> Result<Vec<Neighbor>> {
+        Ok(self.neighbors.clone())
+    }
+    fn sockets(&self) -> Result<Vec<Socket>> {
+        Ok(self.sockets.clone())
+    }
 }
 
 impl Inventory for Fixture {
-    fn connections(&self) -> Result<Vec<Connection>> { Ok(self.connections.clone()) }
-    fn services(&self) -> Result<Vec<Service>> { Ok(self.services.clone()) }
-    fn flows(&self) -> Result<Vec<Flow>> { Ok(self.flows.clone()) }
+    fn connections(&self) -> Result<Vec<Connection>> {
+        Ok(self.connections.clone())
+    }
+    fn services(&self) -> Result<Vec<Service>> {
+        Ok(self.services.clone())
+    }
+    fn flows(&self) -> Result<Vec<Flow>> {
+        Ok(self.flows.clone())
+    }
     fn egress_for(&self, dst: IpAddr) -> Result<Egress> {
         self.egress_table
             .get(&dst)
@@ -677,7 +689,9 @@ impl Resolver for Fixture {
     fn servers_for(&self, conn: &ConnectionId) -> Result<Vec<IpAddr>> {
         Ok(self.dns_per_link.get(&conn.0).cloned().unwrap_or_default())
     }
-    fn stub_server(&self) -> Result<Option<IpAddr>> { Ok(self.stub) }
+    fn stub_server(&self) -> Result<Option<IpAddr>> {
+        Ok(self.stub)
+    }
 }
 
 impl Reachability for Fixture {
@@ -715,8 +729,12 @@ impl Reachability for Fixture {
             error: None,
         })
     }
-    fn trace(&self, _ip: IpAddr, _opts: TraceOpts) -> Result<Vec<Hop>> { Ok(vec![]) }
-    fn capabilities(&self) -> ProbeCapabilities { self.capabilities.clone() }
+    fn trace(&self, _ip: IpAddr, _opts: TraceOpts) -> Result<Vec<Hop>> {
+        Ok(vec![])
+    }
+    fn capabilities(&self) -> ProbeCapabilities {
+        self.capabilities.clone()
+    }
 }
 
 impl Firewall for Fixture {
@@ -727,7 +745,9 @@ impl Firewall for Fixture {
             .copied()
             .unwrap_or(FirewallVerdict::Unknown))
     }
-    fn backend(&self) -> FirewallBackend { self.firewall_backend }
+    fn backend(&self) -> FirewallBackend {
+        self.firewall_backend
+    }
 }
 
 #[cfg(test)]

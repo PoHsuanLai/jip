@@ -61,9 +61,7 @@ impl<'a> Iterator for AttrIter<'a> {
         }
         let len = u16::from_le_bytes([self.buf[0], self.buf[1]]) as usize;
         if len < 4 {
-            return Some(Err(NftError::Parse(format!(
-                "nfattr len {len} < 4"
-            ))));
+            return Some(Err(NftError::Parse(format!("nfattr len {len} < 4"))));
         }
         if len > self.buf.len() {
             return Some(Err(NftError::Parse(format!(
@@ -75,7 +73,11 @@ impl<'a> Iterator for AttrIter<'a> {
         let data = &self.buf[4..len];
         // Advance by padded length (round up to next 4-byte boundary).
         let padded = (len + 3) & !3;
-        self.buf = if padded <= self.buf.len() { &self.buf[padded..] } else { &[] };
+        self.buf = if padded <= self.buf.len() {
+            &self.buf[padded..]
+        } else {
+            &[]
+        };
         Some(Ok(NfAttr { attr_type, data }))
     }
 }
@@ -110,9 +112,7 @@ mod tests {
         let mut buf = Vec::new();
         buf.extend(make_attr(1, b"tcp\0"));
         buf.extend(make_attr(2, &22u32.to_be_bytes()));
-        let attrs: Vec<_> = AttrIter::new(&buf)
-            .collect::<Result<Vec<_>, _>>()
-            .unwrap();
+        let attrs: Vec<_> = AttrIter::new(&buf).collect::<Result<Vec<_>, _>>().unwrap();
         assert_eq!(attrs.len(), 2);
         assert_eq!(attrs[0].as_str().unwrap(), "tcp");
         assert_eq!(attrs[1].as_be_u32().unwrap(), 22);
@@ -122,9 +122,7 @@ mod tests {
     fn nested_flag_stripped() {
         // Top bit (0x8000) is the nested flag; attr_type should be masked off.
         let buf = make_attr(0x8001, &[]);
-        let attrs: Vec<_> = AttrIter::new(&buf)
-            .collect::<Result<Vec<_>, _>>()
-            .unwrap();
+        let attrs: Vec<_> = AttrIter::new(&buf).collect::<Result<Vec<_>, _>>().unwrap();
         assert_eq!(attrs[0].attr_type, 1);
     }
 }

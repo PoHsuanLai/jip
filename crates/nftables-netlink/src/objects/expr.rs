@@ -18,7 +18,10 @@ use crate::error::NftError;
 pub enum Expr {
     PortMatch(PortMatch),
     Verdict(RuleVerdict),
-    Counter { packets: u64, bytes: u64 },
+    Counter {
+        packets: u64,
+        bytes: u64,
+    },
     /// Expression type we don't model (sets, maps, conntrack, etc.).
     Named(String),
 }
@@ -76,10 +79,7 @@ impl RegFile {
 /// attr) and accumulate register state. Returns `Some(Expr)` when a complete
 /// logical expression is recognisable, `None` when the expression only updates
 /// register state for a subsequent expression to consume.
-pub fn decode_expr<'a>(
-    data: &'a [u8],
-    regs: &mut RegFile,
-) -> Result<Option<Expr>, NftError> {
+pub fn decode_expr<'a>(data: &'a [u8], regs: &mut RegFile) -> Result<Option<Expr>, NftError> {
     let mut name: Option<&'a str> = None;
     let mut expr_data: Option<&'a [u8]> = None;
 
@@ -143,10 +143,7 @@ fn decode_payload(data: &[u8], regs: &mut RegFile) -> Result<Option<Expr>, NftEr
         }
     }
     // Transport header offset 2, len 2 → TCP/UDP destination port.
-    if base == Some(NFT_PAYLOAD_TRANSPORT_HEADER)
-        && offset == Some(2)
-        && len == Some(2)
-    {
+    if base == Some(NFT_PAYLOAD_TRANSPORT_HEADER) && offset == Some(2) && len == Some(2) {
         if let Some(reg) = dreg {
             regs.set(reg, RegContent::Port(0));
         }
@@ -180,8 +177,14 @@ fn decode_cmp(data: &[u8], regs: &mut RegFile) -> Result<Option<Expr>, NftError>
     if op != Some(NFT_CMP_EQ) {
         return Ok(None);
     }
-    let reg = match sreg { Some(r) => r, None => return Ok(None) };
-    let val = match cmp_val { Some(v) => v, None => return Ok(None) };
+    let reg = match sreg {
+        Some(r) => r,
+        None => return Ok(None),
+    };
+    let val = match cmp_val {
+        Some(v) => v,
+        None => return Ok(None),
+    };
     let content = regs.get(reg);
 
     match content {

@@ -19,11 +19,11 @@ use std::net::IpAddr;
 use std::path::Path;
 use std::time::Instant;
 
+use netcore::Error;
 use netcore::Result as NcResult;
 use netcore::connection::{ConnectionId, Family};
 use netcore::dns::{DnsAnswer, DnsError, DnsResolution, DnsSource};
 use netcore::traits::Resolver;
-use netcore::Error;
 
 mod resolved;
 
@@ -39,18 +39,28 @@ pub struct ResolverBackend {
 impl ResolverBackend {
     /// Create a new resolver, probing for systemd-resolved at construction.
     pub fn new() -> Self {
-        Self { has_resolved: Self::probe_resolved() }
+        Self {
+            has_resolved: Self::probe_resolved(),
+        }
     }
 
     /// Create a resolver that uses only libc `getaddrinfo`. Useful for tests
     /// and environments without D-Bus.
-    pub fn libc_only() -> Self { Self { has_resolved: false } }
+    pub fn libc_only() -> Self {
+        Self {
+            has_resolved: false,
+        }
+    }
 
     fn probe_resolved() -> bool {
         // Cheap probe: does the abstract socket for the system bus exist
         // and does resolve1 register as a well-known name? We run the async
         // probe on a tiny runtime. If *anything* fails, fall back.
-        match tokio::runtime::Builder::new_current_thread().enable_io().enable_time().build() {
+        match tokio::runtime::Builder::new_current_thread()
+            .enable_io()
+            .enable_time()
+            .build()
+        {
             Ok(rt) => rt.block_on(async { resolved::is_available().await }),
             Err(_) => false,
         }
@@ -58,7 +68,9 @@ impl ResolverBackend {
 }
 
 impl Default for ResolverBackend {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Resolver for ResolverBackend {
@@ -96,7 +108,9 @@ impl Resolver for ResolverBackend {
         if self.has_resolved {
             // systemd-resolved default stub is 127.0.0.53. Confirm via property;
             // if property read fails, assume the conventional address.
-            return Ok(block_on(resolved::stub_address()).unwrap_or(Some("127.0.0.53".parse().unwrap())));
+            return Ok(
+                block_on(resolved::stub_address()).unwrap_or(Some("127.0.0.53".parse().unwrap()))
+            );
         }
         // Non-resolved hosts: look at resolv.conf. A loopback entry means
         // *something* is stubbing (dnsmasq, unbound, etc.). Non-loopback
@@ -195,7 +209,12 @@ fn libc_resolve(name: &str) -> NcResult<DnsResolution> {
 fn classify_libc_error(e: &std::io::Error) -> DnsError {
     let m = e.to_string();
     let lm = m.to_ascii_lowercase();
-    if lm.contains("failed to lookup") && (lm.contains("nodename") || lm.contains("not known") || lm.contains("no such host") || lm.contains("name or service not known")) {
+    if lm.contains("failed to lookup")
+        && (lm.contains("nodename")
+            || lm.contains("not known")
+            || lm.contains("no such host")
+            || lm.contains("name or service not known"))
+    {
         DnsError::NxDomain
     } else if lm.contains("timed out") || lm.contains("timeout") {
         DnsError::Timeout
@@ -207,14 +226,20 @@ fn classify_libc_error(e: &std::io::Error) -> DnsError {
 }
 
 fn parse_resolv_conf(path: &Path) -> Vec<IpAddr> {
-    let Ok(contents) = std::fs::read_to_string(path) else { return vec![] };
+    let Ok(contents) = std::fs::read_to_string(path) else {
+        return vec![];
+    };
     contents
         .lines()
         .filter_map(|line| {
             let line = line.trim();
-            if line.is_empty() || line.starts_with('#') { return None; }
+            if line.is_empty() || line.starts_with('#') {
+                return None;
+            }
             let mut it = line.split_whitespace();
-            if it.next()? != "nameserver" { return None; }
+            if it.next()? != "nameserver" {
+                return None;
+            }
             it.next()?.parse::<IpAddr>().ok()
         })
         .collect()
@@ -247,8 +272,7 @@ mod tests {
 
     #[test]
     fn libc_returns_nxdomain_for_bogus_name() {
-        let r =
-            libc_resolve("thishostnameshouldnotexist.invalid.example.").expect("libc resolve");
+        let r = libc_resolve("thishostnameshouldnotexist.invalid.example.").expect("libc resolve");
         assert!(r.answers.is_empty());
         assert!(r.error.is_some());
     }

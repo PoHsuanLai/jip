@@ -150,7 +150,10 @@ pub struct PingOpts {
 
 impl Default for PingOpts {
     fn default() -> Self {
-        Self { count: 2, timeout: Duration::from_secs(1) }
+        Self {
+            count: 2,
+            timeout: Duration::from_secs(1),
+        }
     }
 }
 

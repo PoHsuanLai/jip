@@ -24,8 +24,14 @@ pub fn links(links: &[Link]) {
 /// Print a list of addresses grouped by link, similar to `ip addr show`.
 pub fn addrs(links: &[Link], addrs: &[(u32, Addr)]) {
     for l in links {
-        let mine: Vec<&Addr> = addrs.iter().filter(|(i, _)| *i == l.index).map(|(_, a)| a).collect();
-        if mine.is_empty() { continue; }
+        let mine: Vec<&Addr> = addrs
+            .iter()
+            .filter(|(i, _)| *i == l.index)
+            .map(|(_, a)| a)
+            .collect();
+        if mine.is_empty() {
+            continue;
+        }
         println!("{}: (index {})", l.name, l.index);
         for a in mine {
             println!(
@@ -49,7 +55,11 @@ pub fn routes(routes: &[Route]) {
             RouteDst::Prefix { ip, prefix } => format!("{ip}/{prefix}"),
         };
         let via = r.gateway.map(|g| format!(" via {g}")).unwrap_or_default();
-        let dev = r.oif.as_deref().map(|d| format!(" dev {d}")).unwrap_or_default();
+        let dev = r
+            .oif
+            .as_deref()
+            .map(|d| format!(" dev {d}"))
+            .unwrap_or_default();
         let metric = r.metric.map(|m| format!(" metric {m}")).unwrap_or_default();
         let proto = format!(" proto {}", r.protocol);
         println!("{dst}{via}{dev}{metric}{proto}");
@@ -59,7 +69,11 @@ pub fn routes(routes: &[Route]) {
 /// Print a list of ARP/ND neighbor entries, similar to `ip neigh show`.
 pub fn neighbors(neigh: &[Neighbor]) {
     for n in neigh {
-        let lladdr = n.lladdr.as_ref().map(|m| m.to_string()).unwrap_or_else(|| "-".into());
+        let lladdr = n
+            .lladdr
+            .as_ref()
+            .map(|m| m.to_string())
+            .unwrap_or_else(|| "-".into());
         println!(
             "{} dev {} lladdr {} {:?}{}",
             n.ip,

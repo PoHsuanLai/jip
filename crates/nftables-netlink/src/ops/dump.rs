@@ -21,17 +21,15 @@ use crate::objects::table::NftTable;
 // ── Low-level send/recv ──────────────────────────────────────────────────────
 
 fn open_socket() -> Result<NlSocket, NftError> {
-    let mut sock = NlSocket::new(NETLINK_NETFILTER)
-        .map_err(|e| {
-            if let Some(os) = e.raw_os_error() {
-                if os == libc::EPERM {
-                    return NftError::MissingCapability;
-                }
+    let mut sock = NlSocket::new(NETLINK_NETFILTER).map_err(|e| {
+        if let Some(os) = e.raw_os_error() {
+            if os == libc::EPERM {
+                return NftError::MissingCapability;
             }
-            NftError::Socket(e)
-        })?;
-    sock.bind_auto()
-        .map_err(NftError::Socket)?;
+        }
+        NftError::Socket(e)
+    })?;
+    sock.bind_auto().map_err(NftError::Socket)?;
     sock.connect(&NlSocketAddr::new(0, 0))
         .map_err(NftError::Socket)?;
     Ok(sock)
@@ -45,12 +43,12 @@ fn build_dump_request(msg_type: u16, seq: u32) -> Vec<u8> {
     let mut buf = Vec::with_capacity(20);
 
     // nlmsghdr
-    buf.extend_from_slice(&total_len.to_ne_bytes());   // nlmsg_len
+    buf.extend_from_slice(&total_len.to_ne_bytes()); // nlmsg_len
     buf.extend_from_slice(&nft_msg_type(msg_type).to_ne_bytes()); // nlmsg_type
     let flags: u16 = NLM_F_REQUEST | NLM_F_DUMP;
-    buf.extend_from_slice(&flags.to_ne_bytes());        // nlmsg_flags
-    buf.extend_from_slice(&seq.to_ne_bytes());          // nlmsg_seq
-    buf.extend_from_slice(&0u32.to_ne_bytes());         // nlmsg_pid
+    buf.extend_from_slice(&flags.to_ne_bytes()); // nlmsg_flags
+    buf.extend_from_slice(&seq.to_ne_bytes()); // nlmsg_seq
+    buf.extend_from_slice(&0u32.to_ne_bytes()); // nlmsg_pid
 
     // nfgenmsg: family=AF_UNSPEC(0), version=NFNETLINK_V0(0), res_id=0 (big-endian)
     buf.push(0); // nfgen_family = AF_UNSPEC
@@ -134,7 +132,11 @@ pub fn dump_tables() -> Result<Vec<NftTable>, NftError> {
             }
         }
         if let Some(name) = name {
-            tables.push(NftTable { family, name, handle });
+            tables.push(NftTable {
+                family,
+                name,
+                handle,
+            });
         }
         Ok(())
     })?;
@@ -179,9 +181,7 @@ pub fn dump_chains() -> Result<Vec<NftChain>, NftError> {
                                 }
                             }
                             NFTA_HOOK_PRIORITY => {
-                                priority = inner
-                                    .as_be_u32()
-                                    .map(|v| v as i32);
+                                priority = inner.as_be_u32().map(|v| v as i32);
                             }
                             _ => {}
                         }
@@ -192,7 +192,14 @@ pub fn dump_chains() -> Result<Vec<NftChain>, NftError> {
         }
 
         if let (Some(table), Some(name)) = (table, name) {
-            chains.push(NftChain { table, name, hook, priority, policy, handle });
+            chains.push(NftChain {
+                table,
+                name,
+                hook,
+                priority,
+                policy,
+                handle,
+            });
         }
         Ok(())
     })?;
@@ -226,7 +233,12 @@ pub fn dump_rules() -> Result<Vec<NftRule>, NftError> {
         }
 
         if let (Some(table), Some(chain)) = (table, chain) {
-            rules.push(NftRule { table, chain, handle, exprs });
+            rules.push(NftRule {
+                table,
+                chain,
+                handle,
+                exprs,
+            });
         }
         Ok(())
     })?;

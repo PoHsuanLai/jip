@@ -5,7 +5,7 @@ use std::net::SocketAddr;
 use anstream::println;
 use tabled::{
     builder::Builder,
-    settings::{Style, object::Rows, themes::Colorization, Color as TabColor},
+    settings::{Color as TabColor, Style, object::Rows, themes::Colorization},
 };
 
 use netcore::link::L4Proto;
@@ -18,7 +18,12 @@ use crate::theme;
 /// address.
 pub fn who(flows: &[Flow]) {
     let mut sorted: Vec<&Flow> = flows.iter().collect();
-    sorted.sort_by(|a, b| a.remote.ip().cmp(&b.remote.ip()).then(a.remote.port().cmp(&b.remote.port())));
+    sorted.sort_by(|a, b| {
+        a.remote
+            .ip()
+            .cmp(&b.remote.ip())
+            .then(a.remote.port().cmp(&b.remote.port()))
+    });
 
     let rows: Vec<[String; 6]> = sorted
         .iter()
@@ -42,7 +47,14 @@ pub fn who(flows: &[Flow]) {
     }
 
     let mut b = Builder::default();
-    b.push_record(["PROTO", "LOCAL", "REMOTE", "BYTES (in/out)", "RTT", "PROCESS"]);
+    b.push_record([
+        "PROTO",
+        "LOCAL",
+        "REMOTE",
+        "BYTES (in/out)",
+        "RTT",
+        "PROCESS",
+    ]);
     for row in &rows {
         b.push_record(row);
     }
@@ -85,7 +97,11 @@ fn human_split(n: u64) -> (String, &'static str) {
         v /= 1024.0;
         u += 1;
     }
-    if u == 0 { (n.to_string(), UNITS[u]) } else { (format!("{v:.1}"), UNITS[u]) }
+    if u == 0 {
+        (n.to_string(), UNITS[u])
+    } else {
+        (format!("{v:.1}"), UNITS[u])
+    }
 }
 
 /// tcp_info.rtt is microseconds, already smoothed by the kernel. Tiered:
@@ -93,7 +109,9 @@ fn human_split(n: u64) -> (String, &'static str) {
 /// ms starts to feel like a WAN hop (cyan), over 100ms is warn, over 200ms
 /// is bad (and usually means transoceanic or something congested).
 fn rtt_cell(us: Option<u32>) -> String {
-    let Some(us) = us else { return theme::dim_placeholder("-"); };
+    let Some(us) = us else {
+        return theme::dim_placeholder("-");
+    };
     let text = if us < 1_000 {
         format!("{us}µs")
     } else {

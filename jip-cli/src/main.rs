@@ -77,9 +77,7 @@ enum Cmd {
     /// Full diagnosis. Walks each layer and reports the first broken thing.
     Check,
     /// Probe reachability to a target: IP, host, host:port, or URL.
-    Reach {
-        target: String,
-    },
+    Reach { target: String },
     /// Print kernel primitives directly (equivalent to `ip addr` etc.).
     Raw {
         #[command(subcommand)]
@@ -95,13 +93,9 @@ enum Cmd {
         profile: String,
     },
     /// Bounce an NM profile (deactivate + activate).
-    Reconnect {
-        profile: String,
-    },
+    Reconnect { profile: String },
     /// Delete an NM profile from disk.
-    Forget {
-        profile: String,
-    },
+    Forget { profile: String },
     /// List all NetworkManager profiles with active state and autoconnect flag.
     Profiles,
     /// Show nearby wifi access points from NM's cached scan.
@@ -165,7 +159,11 @@ fn run(cli: Cli) -> anyhow::Result<ExitCode> {
     }
 }
 
-enum ActionKind { Prefer, Reconnect, Forget }
+enum ActionKind {
+    Prefer,
+    Reconnect,
+    Forget,
+}
 
 fn nm_action(kind: ActionKind, profile: &str) -> anyhow::Result<ExitCode> {
     let Some(nm) = NmBackend::new() else {
@@ -199,7 +197,9 @@ fn overview(json: bool, all: bool, family: FamilyFilter) -> anyhow::Result<ExitC
 /// view is authoritative for everything else.
 fn enrich_with_nm_profiles(conns: &mut [Connection]) {
     let Some(nm) = NmBackend::new() else { return };
-    let Ok(by_iface) = nm.profiles_by_iface() else { return };
+    let Ok(by_iface) = nm.profiles_by_iface() else {
+        return;
+    };
     for c in conns {
         if let Some(p) = by_iface.get(&c.link.name) {
             c.profile = Some(p.clone());
@@ -271,8 +271,12 @@ fn profiles(json: bool) -> anyhow::Result<ExitCode> {
 fn enrich_with_firewall(services: &mut [Service]) {
     let fw = NftBackend::new();
     for s in services {
-        if !matches!(s.exposure, Exposure::Unknown) { continue; }
-        let Ok(verdict) = fw.verdict_for_inbound(s.port, s.proto) else { continue };
+        if !matches!(s.exposure, Exposure::Unknown) {
+            continue;
+        }
+        let Ok(verdict) = fw.verdict_for_inbound(s.port, s.proto) else {
+            continue;
+        };
         s.exposure = Exposure::from_scope_and_verdict(&s.bind, verdict);
     }
 }
@@ -369,7 +373,10 @@ fn parse_target(s: &str) -> anyhow::Result<Target> {
         return Ok(Target::Url { url: s.to_string() });
     }
     if let Ok(sa) = s.parse::<SocketAddr>() {
-        return Ok(Target::Ip { ip: sa.ip(), port: Some(sa.port()) });
+        return Ok(Target::Ip {
+            ip: sa.ip(),
+            port: Some(sa.port()),
+        });
     }
     if let Ok(ip) = s.parse::<IpAddr>() {
         return Ok(Target::Ip { ip, port: None });
@@ -378,8 +385,14 @@ fn parse_target(s: &str) -> anyhow::Result<Target> {
     // already handled above) don't get confused.
     if let Some((host, port)) = s.rsplit_once(':') {
         if let Ok(port) = port.parse::<u16>() {
-            return Ok(Target::Host { name: host.to_string(), port: Some(port) });
+            return Ok(Target::Host {
+                name: host.to_string(),
+                port: Some(port),
+            });
         }
     }
-    Ok(Target::Host { name: s.to_string(), port: None })
+    Ok(Target::Host {
+        name: s.to_string(),
+        port: None,
+    })
 }

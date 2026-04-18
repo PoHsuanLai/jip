@@ -16,9 +16,7 @@
 //! `security: None` here and let `netcore-nm` fill it in when available.
 
 use futures::TryStreamExt;
-use wl_nl80211::{
-    Nl80211Attr, Nl80211Handle, Nl80211RateInfo, Nl80211StationInfo,
-};
+use wl_nl80211::{Nl80211Attr, Nl80211Handle, Nl80211RateInfo, Nl80211StationInfo};
 
 use netcore::connection::WifiSignal;
 
@@ -63,7 +61,9 @@ pub async fn snapshot(handle: &mut Nl80211Handle, if_index: u32) -> Option<WifiS
         for attr in &msg.payload.attributes {
             if let Nl80211Attr::StationInfo(infos) = attr {
                 snap.signal = station_signal(infos);
-                if snap.signal.is_some() { return Some(snap); }
+                if snap.signal.is_some() {
+                    return Some(snap);
+                }
             }
         }
     }

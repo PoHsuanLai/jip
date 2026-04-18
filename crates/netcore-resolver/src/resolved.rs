@@ -43,7 +43,9 @@ const SD_RESOLVED_FROM_CACHE: u64 = 1 << 20;
 type ResolvedAddr = (i32, i32, Vec<u8>);
 
 pub async fn is_available() -> bool {
-    let Ok(conn) = Connection::system().await else { return false; };
+    let Ok(conn) = Connection::system().await else {
+        return false;
+    };
     // NameHasOwner is the cheapest liveness check.
     let reply: zbus::Result<bool> = conn
         .call_method(
@@ -86,7 +88,11 @@ pub async fn resolve_hostname(name: &str) -> NcResult<DnsResolution> {
                 .filter_map(|(_ifindex, family, bytes)| {
                     let ip = ip_from_family_bytes(family, &bytes)?;
                     Some(DnsAnswer {
-                        family: if matches!(ip, IpAddr::V4(_)) { Family::V4 } else { Family::V6 },
+                        family: if matches!(ip, IpAddr::V4(_)) {
+                            Family::V4
+                        } else {
+                            Family::V6
+                        },
                         ip,
                         ttl: None,
                     })
@@ -137,9 +143,15 @@ pub async fn stub_address() -> NcResult<Option<IpAddr>> {
 }
 
 async fn stub_address_inner(conn: &Connection) -> NcResult<Option<IpAddr>> {
-    let listener: String = get_property(conn, BUS_NAME, MANAGER_PATH, MANAGER_IFACE, "DNSStubListener")
-        .await
-        .unwrap_or_else(|_| "no".into());
+    let listener: String = get_property(
+        conn,
+        BUS_NAME,
+        MANAGER_PATH,
+        MANAGER_IFACE,
+        "DNSStubListener",
+    )
+    .await
+    .unwrap_or_else(|_| "no".into());
     if listener == "no" {
         Ok(None)
     } else {
@@ -175,7 +187,8 @@ async fn current_upstream(conn: &Connection) -> NcResult<Option<IpAddr>> {
 }
 
 pub async fn servers_for_link(link_name: &str) -> NcResult<Vec<IpAddr>> {
-    let ifindex = ifindex_for(link_name).ok_or_else(|| Error::NotFound(format!("link {link_name}")))?;
+    let ifindex =
+        ifindex_for(link_name).ok_or_else(|| Error::NotFound(format!("link {link_name}")))?;
     let conn = Connection::system()
         .await
         .map_err(|e| Error::Backend(format!("dbus system bus: {e}")))?;
@@ -208,14 +221,8 @@ pub async fn servers_for_link(link_name: &str) -> NcResult<Vec<IpAddr>> {
             .filter_map(|(family, bytes, _, _)| ip_from_family_bytes(family, &bytes))
             .collect());
     }
-    if let Ok(v) = get_property::<Vec<(i32, Vec<u8>)>>(
-        &conn,
-        BUS_NAME,
-        path.as_str(),
-        LINK_IFACE,
-        "DNS",
-    )
-    .await
+    if let Ok(v) =
+        get_property::<Vec<(i32, Vec<u8>)>>(&conn, BUS_NAME, path.as_str(), LINK_IFACE, "DNS").await
     {
         return Ok(v
             .into_iter()
@@ -256,7 +263,8 @@ where
 
 fn ifindex_for(name: &str) -> Option<u32> {
     let link = std::fs::read_link(format!("/sys/class/net/{name}/ifindex")).ok();
-    if let Some(p) = link { // some kernels give a symlink; most have a plain file
+    if let Some(p) = link {
+        // some kernels give a symlink; most have a plain file
         return p.to_str()?.trim().parse().ok();
     }
     let s = std::fs::read_to_string(format!("/sys/class/net/{name}/ifindex")).ok()?;
@@ -278,7 +286,10 @@ fn ip_from_family_bytes(family: i32, bytes: &[u8]) -> Option<IpAddr> {
 }
 
 fn is_transport(e: &zbus::Error) -> bool {
-    matches!(e, zbus::Error::Address(_) | zbus::Error::InputOutput(_) | zbus::Error::Handshake(_))
+    matches!(
+        e,
+        zbus::Error::Address(_) | zbus::Error::InputOutput(_) | zbus::Error::Handshake(_)
+    )
 }
 
 fn classify_resolved_error(e: &zbus::Error) -> DnsError {

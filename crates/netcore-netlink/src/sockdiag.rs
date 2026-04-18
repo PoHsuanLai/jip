@@ -14,17 +14,17 @@ use std::collections::HashMap;
 use std::net::{IpAddr, SocketAddr};
 
 use netlink_packet_core::{
-    NetlinkHeader, NetlinkMessage, NetlinkPayload, NLM_F_DUMP, NLM_F_REQUEST,
+    NLM_F_DUMP, NLM_F_REQUEST, NetlinkHeader, NetlinkMessage, NetlinkPayload,
 };
 use netlink_packet_sock_diag::{
+    SockDiagMessage,
     constants::{AF_INET, AF_INET6, IPPROTO_TCP, IPPROTO_UDP},
     inet::{
-        nlas::{Nla, TcpInfo},
         ExtensionFlags, InetRequest, InetResponse, SocketId, StateFlags,
+        nlas::{Nla, TcpInfo},
     },
-    SockDiagMessage,
 };
-use netlink_sys::{protocols::NETLINK_SOCK_DIAG, Socket as NlSocket, SocketAddr as NlSocketAddr};
+use netlink_sys::{Socket as NlSocket, SocketAddr as NlSocketAddr, protocols::NETLINK_SOCK_DIAG};
 
 // TCP state numeric codes. `TCP_*` constants in `netlink_packet_sock_diag`
 // come in as `u8`, and `InetResponseHeader::state` is a `u8`, so we use the
@@ -106,7 +106,11 @@ fn dump_family_proto(
         protocol,
         extensions,
         states,
-        socket_id: if family == AF_INET { SocketId::new_v4() } else { SocketId::new_v6() },
+        socket_id: if family == AF_INET {
+            SocketId::new_v4()
+        } else {
+            SocketId::new_v6()
+        },
     };
 
     let mut header = NetlinkHeader::default();
@@ -132,9 +136,8 @@ fn dump_family_proto(
         let mut offset = 0;
         while offset < n {
             let slice = &recv_buf[offset..n];
-            let msg = <NetlinkMessage<SockDiagMessage>>::deserialize(slice).map_err(|e| {
-                Error::Backend(format!("sock_diag parse: {e}"))
-            })?;
+            let msg = <NetlinkMessage<SockDiagMessage>>::deserialize(slice)
+                .map_err(|e| Error::Backend(format!("sock_diag parse: {e}")))?;
             let len = msg.header.length as usize;
             match msg.payload {
                 NetlinkPayload::InnerMessage(SockDiagMessage::InetResponse(r)) => {
@@ -146,7 +149,9 @@ fn dump_family_proto(
                 }
                 _ => {}
             }
-            if len == 0 { break; }
+            if len == 0 {
+                break;
+            }
             offset += len;
         }
     }
@@ -171,7 +176,11 @@ fn extract_tcp_stats(nlas: &[Nla]) -> Option<TcpStats> {
 }
 
 fn response_to_row(r: InetResponse, protocol: u8, index: &InodeIndex) -> SockRow {
-    let tcp = if protocol == IPPROTO_TCP { extract_tcp_stats(&r.nlas) } else { None };
+    let tcp = if protocol == IPPROTO_TCP {
+        extract_tcp_stats(&r.nlas)
+    } else {
+        None
+    };
     let socket = header_to_socket(&r.header, protocol, index);
     SockRow { socket, tcp }
 }
@@ -181,7 +190,11 @@ fn header_to_socket(
     protocol: u8,
     index: &InodeIndex,
 ) -> Socket {
-    let proto = if protocol == IPPROTO_TCP { L4Proto::Tcp } else { L4Proto::Udp };
+    let proto = if protocol == IPPROTO_TCP {
+        L4Proto::Tcp
+    } else {
+        L4Proto::Udp
+    };
     let local = SocketAddr::new(h.socket_id.source_address, h.socket_id.source_port);
     let remote_ip = h.socket_id.destination_address;
     let remote_is_zero = match remote_ip {
@@ -253,8 +266,12 @@ fn build_inode_index() -> InodeIndex {
     };
     for entry in proc_entries.flatten() {
         let name = entry.file_name();
-        let Some(pid_str) = name.to_str() else { continue };
-        let Ok(pid) = pid_str.parse::<u32>() else { continue };
+        let Some(pid_str) = name.to_str() else {
+            continue;
+        };
+        let Ok(pid) = pid_str.parse::<u32>() else {
+            continue;
+        };
 
         let comm = std::fs::read_to_string(format!("/proc/{pid}/comm"))
             .map(|s| s.trim().to_string())
@@ -284,5 +301,9 @@ fn build_inode_index() -> InodeIndex {
             }
         }
     }
-    if permission_denied { InodeIndex::Partial(map) } else { InodeIndex::Full(map) }
+    if permission_denied {
+        InodeIndex::Partial(map)
+    } else {
+        InodeIndex::Full(map)
+    }
 }

@@ -128,10 +128,10 @@ pub const NF_ACCEPT: u32 = 1;
 // nftables-specific continuation verdicts (stored as i32 in the kernel,
 // but the wire value fits in u32 for matching purposes).
 pub const NFT_CONTINUE: u32 = 0xFFFF_FFFF; // -1 as u32
-pub const NFT_BREAK: u32 = 0xFFFF_FFFE;    // -2 as u32
-pub const NFT_JUMP: u32 = 0xFFFF_FFFD;     // -3 as u32
-pub const NFT_GOTO: u32 = 0xFFFF_FFFC;     // -4 as u32
-pub const NFT_RETURN: u32 = 0xFFFF_FFFB;   // -5 as u32
+pub const NFT_BREAK: u32 = 0xFFFF_FFFE; // -2 as u32
+pub const NFT_JUMP: u32 = 0xFFFF_FFFD; // -3 as u32
+pub const NFT_GOTO: u32 = 0xFFFF_FFFC; // -4 as u32
+pub const NFT_RETURN: u32 = 0xFFFF_FFFB; // -5 as u32
 
 // ── Register numbers ─────────────────────────────────────────────────────────
 

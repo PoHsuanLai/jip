@@ -19,6 +19,9 @@ fn main() {
     }
     println!("== routes ==");
     for r in b.routes().expect("routes").iter().take(10) {
-        println!("  {:?} via {:?} dev {:?} metric {:?}", r.dst, r.gateway, r.oif, r.metric);
+        println!(
+            "  {:?} via {:?} dev {:?} metric {:?}",
+            r.dst, r.gateway, r.oif, r.metric
+        );
     }
 }

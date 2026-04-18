@@ -32,8 +32,12 @@ pub fn print(path: &Path) {
         // false. Mark them when true so users can tell a cache hit from a
         // live resolution, and see DNSSEC when it's working.
         let mut tags: Vec<String> = Vec::new();
-        if r.cached { tags.push(theme::paint(theme::info(), "cached")); }
-        if r.authenticated { tags.push(theme::paint(theme::ok_soft(), "dnssec-ok")); }
+        if r.cached {
+            tags.push(theme::paint(theme::info(), "cached"));
+        }
+        if r.authenticated {
+            tags.push(theme::paint(theme::ok_soft(), "dnssec-ok"));
+        }
         if !tags.is_empty() {
             print!(" [{}]", tags.join(", "));
         }
@@ -43,21 +47,28 @@ pub fn print(path: &Path) {
             println!("        {arrow} {}", a.ip);
         }
         if let Some(e) = &r.error {
-            println!("        {}", theme::paint(theme::bad(), format!("error: {e:?}")));
+            println!(
+                "        {}",
+                theme::paint(theme::bad(), format!("error: {e:?}"))
+            );
         }
     }
-    let gw = path.egress.gateway.map(|g| g.to_string()).unwrap_or_else(|| theme::dim_placeholder("-"));
+    let gw = path
+        .egress
+        .gateway
+        .map(|g| g.to_string())
+        .unwrap_or_else(|| theme::dim_placeholder("-"));
     println!(
         "{label}egress:{label:#} {} dev {} src {} gw {}",
-        path.egress.connection_id.0,
-        path.egress.iface,
-        path.egress.src,
-        gw,
+        path.egress.connection_id.0, path.egress.iface, path.egress.src, gw,
     );
     if !path.egress.family_unreachable.is_empty() {
         println!(
             "        {}",
-            theme::paint(theme::warn(), format!("unreachable families: {:?}", path.egress.family_unreachable))
+            theme::paint(
+                theme::warn(),
+                format!("unreachable families: {:?}", path.egress.family_unreachable)
+            )
         );
     }
     print_probes(&path.probes);
@@ -67,7 +78,10 @@ pub fn print(path: &Path) {
     // variable text so the "REACHABLE" word gets styled but the rest stays
     // neutral.
     let (label, detail, style) = match &path.verdict {
-        Verdict::Reachable { latency_ms, family_used } => (
+        Verdict::Reachable {
+            latency_ms,
+            family_used,
+        } => (
             "REACHABLE",
             format!("({latency_ms}ms, {family_used:?})"),
             theme::ok(),
@@ -80,7 +94,9 @@ pub fn print(path: &Path) {
         Verdict::DnsFailed { error } => ("DNS FAILED", format!("({error:?})"), theme::bad()),
         Verdict::NoEgress { reason } => ("NO EGRESS", format!("({reason})"), theme::bad()),
         Verdict::GatewayDown { gateway } => ("GW DOWN", format!("({gateway})"), theme::bad()),
-        Verdict::PacketLoss { loss_pct } => ("PKT LOSS", format!("({loss_pct:.0}%)"), theme::warn()),
+        Verdict::PacketLoss { loss_pct } => {
+            ("PKT LOSS", format!("({loss_pct:.0}%)"), theme::warn())
+        }
         Verdict::TcpRefused { addr } => ("REFUSED", format!("({addr})"), theme::bad()),
         Verdict::TcpTimeout { addr } => ("TIMEOUT", format!("({addr})"), theme::bad()),
         Verdict::TlsFailed { err } => ("TLS FAILED", format!("({err})"), theme::bad()),
@@ -107,7 +123,12 @@ fn print_probes(p: &netcore::path::ProbeResults) {
     let pad = "       "; // width of "probes:"
     let mut first = true;
     let mut lead = || {
-        if first { first = false; head.clone() } else { pad.to_string() }
+        if first {
+            first = false;
+            head.clone()
+        } else {
+            pad.to_string()
+        }
     };
     if let Some(gp) = &p.gateway_ping {
         let verdict = ping_verdict(gp.sent, gp.received);
@@ -116,7 +137,9 @@ fn print_probes(p: &netcore::path::ProbeResults) {
             lead(),
             gp.sent,
             gp.received,
-            gp.rtt_avg.map(|d| format!("{:.1}ms", d.as_secs_f64() * 1000.0)).unwrap_or_else(|| theme::dim_placeholder("-")),
+            gp.rtt_avg
+                .map(|d| format!("{:.1}ms", d.as_secs_f64() * 1000.0))
+                .unwrap_or_else(|| theme::dim_placeholder("-")),
             verdict,
         );
     }
@@ -164,7 +187,10 @@ fn print_probes(p: &netcore::path::ProbeResults) {
     if let Some(trace) = &p.trace {
         println!("{} trace:", lead());
         for hop in trace {
-            let ip = hop.ip.map(|i| i.to_string()).unwrap_or_else(|| theme::dim_placeholder("*"));
+            let ip = hop
+                .ip
+                .map(|i| i.to_string())
+                .unwrap_or_else(|| theme::dim_placeholder("*"));
             let rtt = hop
                 .rtt
                 .map(|d| format!("{:.1}ms", d.as_secs_f64() * 1000.0))
@@ -175,12 +201,22 @@ fn print_probes(p: &netcore::path::ProbeResults) {
 }
 
 fn ok_fail(ok: bool) -> String {
-    if ok { theme::paint(theme::ok_soft(), "OK") } else { theme::paint(theme::bad(), "FAIL") }
+    if ok {
+        theme::paint(theme::ok_soft(), "OK")
+    } else {
+        theme::paint(theme::bad(), "FAIL")
+    }
 }
 
 fn ping_verdict(sent: u32, recv: u32) -> String {
-    if sent == 0 { return String::new(); }
-    if recv == 0 { theme::paint(theme::bad(), "FAIL") }
-    else if recv < sent { theme::paint(theme::warn(), "LOSS") }
-    else { theme::paint(theme::ok_soft(), "OK") }
+    if sent == 0 {
+        return String::new();
+    }
+    if recv == 0 {
+        theme::paint(theme::bad(), "FAIL")
+    } else if recv < sent {
+        theme::paint(theme::warn(), "LOSS")
+    } else {
+        theme::paint(theme::ok_soft(), "OK")
+    }
 }

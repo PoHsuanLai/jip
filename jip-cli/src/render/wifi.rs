@@ -3,7 +3,7 @@
 use anstream::println;
 use tabled::{
     builder::Builder,
-    settings::{Style, object::Rows, themes::Colorization, Color as TabColor},
+    settings::{Color as TabColor, Style, object::Rows, themes::Colorization},
 };
 
 use netcore::connection::{AccessPoint, WifiSecurity};

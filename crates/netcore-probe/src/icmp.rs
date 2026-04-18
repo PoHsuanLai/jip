@@ -86,15 +86,32 @@ pub fn trace(ip: IpAddr, opts: TraceOpts) -> NcResult<Vec<Hop>> {
         let _ = sock.send_to(&echo, &dest);
         match wait_for_icmp(&sock, ttl as u16, opts.timeout_per_hop) {
             Ok(IcmpOutcome::EchoReply { from, .. }) => {
-                hops.push(Hop { ttl, ip: Some(from), rtt: Some(start.elapsed()), hostname: None });
+                hops.push(Hop {
+                    ttl,
+                    ip: Some(from),
+                    rtt: Some(start.elapsed()),
+                    hostname: None,
+                });
                 break;
             }
             Ok(IcmpOutcome::Error { router, done, .. }) => {
-                hops.push(Hop { ttl, ip: Some(router), rtt: Some(start.elapsed()), hostname: None });
-                if done { break; }
+                hops.push(Hop {
+                    ttl,
+                    ip: Some(router),
+                    rtt: Some(start.elapsed()),
+                    hostname: None,
+                });
+                if done {
+                    break;
+                }
             }
             Err(_) => {
-                hops.push(Hop { ttl, ip: None, rtt: None, hostname: None });
+                hops.push(Hop {
+                    ttl,
+                    ip: None,
+                    rtt: None,
+                    hostname: None,
+                });
             }
         }
     }
@@ -113,7 +130,8 @@ fn open_icmp_socket(ip: IpAddr) -> NcResult<Socket> {
             "open ICMP socket (need unprivileged ICMP; check net.ipv4.ping_group_range): {e}"
         ))
     })?;
-    s.set_nonblocking(true).map_err(|e| Error::Backend(format!("set_nonblocking: {e}")))?;
+    s.set_nonblocking(true)
+        .map_err(|e| Error::Backend(format!("set_nonblocking: {e}")))?;
     Ok(s)
 }
 
@@ -167,11 +185,17 @@ fn build_echo(seq: u16, v6: bool) -> Vec<u8> {
 // ---- waiting and parsing ----
 
 enum IcmpOutcome {
-    EchoReply { from: IpAddr, #[allow(dead_code)] seq: u16 },
+    EchoReply {
+        from: IpAddr,
+        #[allow(dead_code)]
+        seq: u16,
+    },
     Error {
         router: IpAddr,
-        #[allow(dead_code)] ee_type: u8,
-        #[allow(dead_code)] ee_code: u8,
+        #[allow(dead_code)]
+        ee_type: u8,
+        #[allow(dead_code)]
+        ee_code: u8,
         done: bool,
     },
 }
@@ -184,12 +208,18 @@ fn wait_for_icmp(sock: &Socket, _seq: u16, timeout: Duration) -> NcResult<IcmpOu
         if remaining.is_zero() {
             return Err(Error::Backend("icmp timeout".into()));
         }
-        let mut pfd = libc::pollfd { fd, events: libc::POLLIN | libc::POLLERR, revents: 0 };
+        let mut pfd = libc::pollfd {
+            fd,
+            events: libc::POLLIN | libc::POLLERR,
+            revents: 0,
+        };
         let ms = remaining.as_millis().min(i32::MAX as u128) as libc::c_int;
         let rc = unsafe { libc::poll(&mut pfd, 1, ms) };
         if rc < 0 {
             let e = io::Error::last_os_error();
-            if e.kind() == io::ErrorKind::Interrupted { continue; }
+            if e.kind() == io::ErrorKind::Interrupted {
+                continue;
+            }
             return Err(Error::Backend(format!("poll: {e}")));
         }
         if rc == 0 {
@@ -213,11 +243,18 @@ fn recv_normal(sock: &Socket) -> NcResult<Option<IcmpOutcome>> {
     let mut buf: [MaybeUninit<u8>; 1500] = [MaybeUninit::uninit(); 1500];
     match sock.recv_from(&mut buf) {
         Ok((n, addr)) => {
-            let bytes: Vec<u8> = buf[..n].iter().map(|b| unsafe { b.assume_init() }).collect();
-            let Some(sa) = addr.as_socket() else { return Ok(None) };
+            let bytes: Vec<u8> = buf[..n]
+                .iter()
+                .map(|b| unsafe { b.assume_init() })
+                .collect();
+            let Some(sa) = addr.as_socket() else {
+                return Ok(None);
+            };
             // First byte is ICMP type on both v4 (IPPROTO_ICMP strips IP hdr
             // for dgram sockets) and v6.
-            if bytes.is_empty() { return Ok(None); }
+            if bytes.is_empty() {
+                return Ok(None);
+            }
             let ty = bytes[0];
             // Echo Reply: v4 type=0, v6 type=129. Seq is at offset 6..8.
             if (ty == 0 || ty == 129) && bytes.len() >= 8 {
@@ -256,7 +293,9 @@ fn recv_error_queue(sock: &Socket) -> NcResult<Option<IcmpOutcome>> {
     let n = unsafe { libc::recvmsg(fd, &mut msg, libc::MSG_ERRQUEUE | libc::MSG_DONTWAIT) };
     if n < 0 {
         let e = io::Error::last_os_error();
-        if e.kind() == io::ErrorKind::WouldBlock { return Ok(None); }
+        if e.kind() == io::ErrorKind::WouldBlock {
+            return Ok(None);
+        }
         return Err(Error::Backend(format!("recvmsg(ERRQUEUE): {e}")));
     }
 
@@ -271,22 +310,27 @@ fn recv_error_queue(sock: &Socket) -> NcResult<Option<IcmpOutcome>> {
             let ee: SockExtendedErr = unsafe { std::ptr::read_unaligned(data_ptr as *const _) };
             let off_ptr = unsafe { data_ptr.add(mem::size_of::<SockExtendedErr>()) };
             let router: IpAddr = if is_v4 {
-                let sa: libc::sockaddr_in = unsafe { std::ptr::read_unaligned(off_ptr as *const _) };
+                let sa: libc::sockaddr_in =
+                    unsafe { std::ptr::read_unaligned(off_ptr as *const _) };
                 IpAddr::V4(Ipv4Addr::from(u32::from_be(sa.sin_addr.s_addr)))
             } else {
-                let sa: libc::sockaddr_in6 = unsafe { std::ptr::read_unaligned(off_ptr as *const _) };
+                let sa: libc::sockaddr_in6 =
+                    unsafe { std::ptr::read_unaligned(off_ptr as *const _) };
                 IpAddr::V6(Ipv6Addr::from(sa.sin6_addr.s6_addr))
             };
             // Time Exceeded: v4 type=11, v6 type=3. Dest-unreach: v4=3, v6=1.
             let done = match (is_v4, ee.ee_type) {
-                (true, 3) | (false, 1) => true,  // unreachable — stop trace
+                (true, 3) | (false, 1) => true, // unreachable — stop trace
                 _ => false,
             };
             // For echo reply arriving via error queue (rare), recognise and
             // surface as EchoReply so caller sees target reached.
             let reached = ee.ee_errno == 0;
             if reached {
-                return Ok(Some(IcmpOutcome::EchoReply { from: router, seq: 0 }));
+                return Ok(Some(IcmpOutcome::EchoReply {
+                    from: router,
+                    seq: 0,
+                }));
             }
             return Ok(Some(IcmpOutcome::Error {
                 router,

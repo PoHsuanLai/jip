@@ -43,7 +43,12 @@ impl DiagApp {
         resolver: Box<dyn Resolver>,
         reach: Box<dyn Reachability>,
     ) -> Self {
-        Self { inventory, resolver, reach, firewall: None }
+        Self {
+            inventory,
+            resolver,
+            reach,
+            firewall: None,
+        }
     }
 
     /// Attach an optional firewall backend. When present, `check()` includes
@@ -90,13 +95,17 @@ impl Diagnostician for DiagApp {
             let evidence = resolution
                 .clone()
                 .map(|r| Evidence::Dns { dns: r })
-                .unwrap_or(Evidence::Text { text: "no resolution".into() });
+                .unwrap_or(Evidence::Text {
+                    text: "no resolution".into(),
+                });
             return Ok(Path {
                 target,
                 resolution,
                 egress: empty_egress(),
                 probes: empty_probes(strategy),
-                verdict: Verdict::DnsFailed { error: dns_err.clone() },
+                verdict: Verdict::DnsFailed {
+                    error: dns_err.clone(),
+                },
                 findings: vec![Finding {
                     layer: Layer::Dns,
                     severity: Severity::Broken,
@@ -131,7 +140,14 @@ impl Diagnostician for DiagApp {
             &mut findings,
         );
 
-        Ok(Path { target, resolution, egress, probes, verdict, findings })
+        Ok(Path {
+            target,
+            resolution,
+            egress,
+            probes,
+            verdict,
+            findings,
+        })
     }
 }
 
@@ -164,12 +180,17 @@ fn check_gateway(
                 summary: format!("{} is default but has no gateway", c.id),
                 detail: None,
                 remedy: Some(Remedy::Reconnect { id: c.id.clone() }),
-                evidence: Evidence::Text { text: format!("link {}", c.link.name) },
+                evidence: Evidence::Text {
+                    text: format!("link {}", c.link.name),
+                },
             });
             continue;
         };
         match gw.l2_state {
-            NeighState::Reachable | NeighState::Stale | NeighState::Delay | NeighState::Probe
+            NeighState::Reachable
+            | NeighState::Stale
+            | NeighState::Delay
+            | NeighState::Probe
             | NeighState::Permanent => {}
             NeighState::Failed | NeighState::Incomplete => {
                 findings.push(Finding {
@@ -195,8 +216,12 @@ fn check_gateway(
                     severity: Severity::Broken,
                     summary: format!("gateway {} did not respond to ping", gw.ip),
                     detail: Some(format!("{} sent, {} received", p.sent, p.received)),
-                    remedy: Some(Remedy::Check { what: "gateway power / upstream".into() }),
-                    evidence: Evidence::Text { text: format!("{:?}", p) },
+                    remedy: Some(Remedy::Check {
+                        what: "gateway power / upstream".into(),
+                    }),
+                    evidence: Evidence::Text {
+                        text: format!("{:?}", p),
+                    },
                 });
             } else if p.loss_pct() > 25.0 {
                 findings.push(Finding {
@@ -205,7 +230,9 @@ fn check_gateway(
                     summary: format!("{:.0}% packet loss to gateway {}", p.loss_pct(), gw.ip),
                     detail: None,
                     remedy: None,
-                    evidence: Evidence::Text { text: format!("{:?}", p) },
+                    evidence: Evidence::Text {
+                        text: format!("{:?}", p),
+                    },
                 });
             }
         }
@@ -216,13 +243,18 @@ fn check_dns(resolver: &dyn Resolver, findings: &mut Vec<Finding>) {
     match resolver.resolve("cloudflare.com") {
         Ok(r) if r.error.is_none() && !r.answers.is_empty() => {}
         Ok(r) => {
-            let err = r.error.clone().unwrap_or(DnsError::Other("empty answer".into()));
+            let err = r
+                .error
+                .clone()
+                .unwrap_or(DnsError::Other("empty answer".into()));
             findings.push(Finding {
                 layer: Layer::Dns,
                 severity: Severity::Broken,
                 summary: format!("DNS probe failed: {err:?}"),
                 detail: None,
-                remedy: Some(Remedy::Check { what: "resolver reachability".into() }),
+                remedy: Some(Remedy::Check {
+                    what: "resolver reachability".into(),
+                }),
                 evidence: Evidence::Dns { dns: r },
             });
         }
@@ -232,8 +264,12 @@ fn check_dns(resolver: &dyn Resolver, findings: &mut Vec<Finding>) {
                 severity: Severity::Broken,
                 summary: "DNS probe failed to run".into(),
                 detail: Some(e.to_string()),
-                remedy: Some(Remedy::Check { what: "resolver configuration".into() }),
-                evidence: Evidence::Text { text: e.to_string() },
+                remedy: Some(Remedy::Check {
+                    what: "resolver configuration".into(),
+                }),
+                evidence: Evidence::Text {
+                    text: e.to_string(),
+                },
             });
         }
     }
@@ -249,8 +285,12 @@ fn check_internet(reach: &dyn Reachability, findings: &mut Vec<Finding>) {
                 severity: Severity::Broken,
                 summary: format!("could not TCP connect to canary {addr}"),
                 detail: r.error.clone(),
-                remedy: Some(Remedy::Check { what: "upstream connectivity / firewall".into() }),
-                evidence: Evidence::Text { text: format!("{:?}", r) },
+                remedy: Some(Remedy::Check {
+                    what: "upstream connectivity / firewall".into(),
+                }),
+                evidence: Evidence::Text {
+                    text: format!("{:?}", r),
+                },
             });
         }
         Err(e) => {
@@ -260,7 +300,9 @@ fn check_internet(reach: &dyn Reachability, findings: &mut Vec<Finding>) {
                 summary: "canary TCP probe could not run".into(),
                 detail: Some(e.to_string()),
                 remedy: None,
-                evidence: Evidence::Text { text: e.to_string() },
+                evidence: Evidence::Text {
+                    text: e.to_string(),
+                },
             });
         }
     }
@@ -296,7 +338,11 @@ fn is_lan_ish(ip: IpAddr) -> bool {
 fn resolve_target(
     target: &Target,
     resolver: &dyn Resolver,
-) -> Result<(Option<IpAddr>, Option<u16>, Option<netcore::dns::DnsResolution>)> {
+) -> Result<(
+    Option<IpAddr>,
+    Option<u16>,
+    Option<netcore::dns::DnsResolution>,
+)> {
     match target {
         Target::Ip { ip, port } => Ok((Some(*ip), *port, None)),
         Target::Host { name, port } => {
@@ -305,8 +351,8 @@ fn resolve_target(
             Ok((ip, *port, Some(r)))
         }
         Target::Url { url } => {
-            let parsed = url::Url::parse(url)
-                .map_err(|e| Error::Parse(format!("invalid url: {e}")))?;
+            let parsed =
+                url::Url::parse(url).map_err(|e| Error::Parse(format!("invalid url: {e}")))?;
             let host = parsed
                 .host_str()
                 .ok_or_else(|| Error::Parse("url has no host".into()))?;
@@ -342,14 +388,18 @@ fn run_probes(
                 Ok(p) => p,
                 Err(e) => {
                     return (
-                        Verdict::NoEgress { reason: e.to_string() },
+                        Verdict::NoEgress {
+                            reason: e.to_string(),
+                        },
                         probes,
                     );
                 }
             };
             let loss = p.loss_pct();
             let verdict = if p.received == 0 {
-                Verdict::TcpTimeout { addr: SocketAddr::new(ip, tcp_port) }
+                Verdict::TcpTimeout {
+                    addr: SocketAddr::new(ip, tcp_port),
+                }
             } else if loss > 50.0 {
                 Verdict::PacketLoss { loss_pct: loss }
             } else {
@@ -361,14 +411,17 @@ fn run_probes(
             probes.target_ping = Some(p);
             (verdict, probes)
         }
-        ProbeStrategy::UnspecifiedTcp
-        | ProbeStrategy::SpecificPort
-        | ProbeStrategy::HttpUrl => {
+        ProbeStrategy::UnspecifiedTcp | ProbeStrategy::SpecificPort | ProbeStrategy::HttpUrl => {
             let addr = SocketAddr::new(ip, tcp_port);
             let tcp = match reach.tcp_connect(addr, Duration::from_secs(3)) {
                 Ok(t) => t,
                 Err(e) => {
-                    return (Verdict::NoEgress { reason: e.to_string() }, probes);
+                    return (
+                        Verdict::NoEgress {
+                            reason: e.to_string(),
+                        },
+                        probes,
+                    );
                 }
             };
             if !tcp.connected {
@@ -393,7 +446,10 @@ fn run_probes(
                 .unwrap_or(0);
             maybe_note_unreachable_family(egress, findings);
             (
-                Verdict::Reachable { latency_ms: latency, family_used: family },
+                Verdict::Reachable {
+                    latency_ms: latency,
+                    family_used: family,
+                },
                 probes,
             )
         }
@@ -407,7 +463,9 @@ fn run_http_stage(
     probes: &mut ProbeResults,
 ) {
     if let Target::Url { url } = target {
-        let Ok(parsed) = url::Url::parse(url) else { return };
+        let Ok(parsed) = url::Url::parse(url) else {
+            return;
+        };
         let host = parsed.host_str().unwrap_or("").to_owned();
         if parsed.scheme() == "https" {
             if let Ok(tls) = reach.tls_handshake(addr, &host, Duration::from_secs(3)) {
@@ -464,7 +522,16 @@ fn empty_probes(strategy: ProbeStrategy) -> ProbeResults {
 pub use netcore::traits::Diagnostician as DiagnosticianTrait;
 
 #[allow(dead_code)]
-fn _type_assertions(_: &dyn Reachability, _: PingResult, _: TcpProbeResult, _: TlsProbeResult, _: HttpProbeResult, _: Vec<Hop>, _: TraceOpts) {}
+fn _type_assertions(
+    _: &dyn Reachability,
+    _: PingResult,
+    _: TcpProbeResult,
+    _: TlsProbeResult,
+    _: HttpProbeResult,
+    _: Vec<Hop>,
+    _: TraceOpts,
+) {
+}
 
 #[cfg(test)]
 mod tests {
@@ -515,7 +582,10 @@ mod tests {
     fn trace_path_reaches_github_via_wired_connection() {
         let app = app_from(Fixture::this_machine());
         let path = app
-            .trace_path(Target::Host { name: "github.com".into(), port: None })
+            .trace_path(Target::Host {
+                name: "github.com".into(),
+                port: None,
+            })
             .unwrap();
         assert_eq!(path.egress.connection_id.0, "Wired connection 1");
         assert!(
@@ -530,7 +600,10 @@ mod tests {
     fn trace_path_reports_dns_failure() {
         let app = app_from(Fixture::this_machine());
         let path = app
-            .trace_path(Target::Host { name: "nxdomain.example".into(), port: None })
+            .trace_path(Target::Host {
+                name: "nxdomain.example".into(),
+                port: None,
+            })
             .unwrap();
         assert!(
             matches!(path.verdict, Verdict::DnsFailed { .. }),
@@ -547,7 +620,10 @@ mod tests {
     fn trace_path_surfaces_unreachable_v6_family() {
         let app = app_from(Fixture::this_machine());
         let path = app
-            .trace_path(Target::Host { name: "github.com".into(), port: None })
+            .trace_path(Target::Host {
+                name: "github.com".into(),
+                port: None,
+            })
             .unwrap();
         assert!(
             path.findings

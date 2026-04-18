@@ -39,12 +39,16 @@ pub struct ProbeBackend {
 impl ProbeBackend {
     /// Detect available capabilities and return a new backend.
     pub fn new() -> Self {
-        Self { caps: detect_capabilities() }
+        Self {
+            caps: detect_capabilities(),
+        }
     }
 }
 
 impl Default for ProbeBackend {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Reachability for ProbeBackend {
@@ -63,7 +67,12 @@ impl Reachability for ProbeBackend {
             Ok(s) => {
                 let took = start.elapsed();
                 let _ = s.shutdown(std::net::Shutdown::Both);
-                Ok(TcpProbeResult { addr: sa, connected: true, took, error: None })
+                Ok(TcpProbeResult {
+                    addr: sa,
+                    connected: true,
+                    took,
+                    error: None,
+                })
             }
             Err(e) => Ok(TcpProbeResult {
                 addr: sa,
@@ -84,7 +93,13 @@ impl Reachability for ProbeBackend {
         let out = do_tls(sa, sni, timeout);
         let took = start.elapsed();
         match out {
-            Ok(()) => Ok(TlsProbeResult { peer: sa, sni: sni.into(), negotiated: true, took, error: None }),
+            Ok(()) => Ok(TlsProbeResult {
+                peer: sa,
+                sni: sni.into(),
+                negotiated: true,
+                took,
+                error: None,
+            }),
             Err(e) => Ok(TlsProbeResult {
                 peer: sa,
                 sni: sni.into(),
@@ -100,7 +115,12 @@ impl Reachability for ProbeBackend {
         let result = do_http_head(url, timeout);
         let took = start.elapsed();
         match result {
-            Ok(status) => Ok(HttpProbeResult { url: url.to_string(), status: Some(status), took, error: None }),
+            Ok(status) => Ok(HttpProbeResult {
+                url: url.to_string(),
+                status: Some(status),
+                took,
+                error: None,
+            }),
             Err(e) => Ok(HttpProbeResult {
                 url: url.to_string(),
                 status: None,
@@ -119,7 +139,9 @@ impl Reachability for ProbeBackend {
         icmp::trace(ip, opts)
     }
 
-    fn capabilities(&self) -> ProbeCapabilities { self.caps.clone() }
+    fn capabilities(&self) -> ProbeCapabilities {
+        self.caps.clone()
+    }
 }
 
 /// Probe whether we can open unprivileged ICMP sockets once, at startup.
@@ -159,8 +181,13 @@ fn do_tls(sa: SocketAddr, sni: &str, timeout: Duration) -> Result<(), Box<dyn st
     let mut conn = ClientConnection::new(config, server_name)?;
     // Drive the handshake to completion.
     while conn.is_handshaking() {
-        if conn.wants_write() { conn.write_tls(&mut sock)?; }
-        if conn.wants_read()  { conn.read_tls(&mut sock)?; conn.process_new_packets()?; }
+        if conn.wants_write() {
+            conn.write_tls(&mut sock)?;
+        }
+        if conn.wants_read() {
+            conn.read_tls(&mut sock)?;
+            conn.process_new_packets()?;
+        }
     }
     Ok(())
 }
@@ -179,10 +206,12 @@ fn tls_client_config() -> Result<Arc<rustls::ClientConfig>, Box<dyn std::error::
 fn do_http_head(url: &url::Url, timeout: Duration) -> Result<u16, Box<dyn std::error::Error>> {
     let host = url.host_str().ok_or("url missing host")?;
     let port = url.port_or_known_default().ok_or("url missing port")?;
-    let path = if url.path().is_empty() { "/" } else { url.path() };
-    let sas: Vec<SocketAddr> = (host, port)
-        .to_socket_addrs_local()?
-        .collect();
+    let path = if url.path().is_empty() {
+        "/"
+    } else {
+        url.path()
+    };
+    let sas: Vec<SocketAddr> = (host, port).to_socket_addrs_local()?.collect();
     let sa = *sas.first().ok_or("no address for host")?;
     let req = format!(
         "HEAD {path} HTTP/1.1\r\nHost: {host}\r\nUser-Agent: jip/0.1\r\nConnection: close\r\nAccept: */*\r\n\r\n"
@@ -260,7 +289,7 @@ fn _touch(_: Ipv4Addr, _: Ipv6Addr) {}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::net::{TcpListener, SocketAddr};
+    use std::net::{SocketAddr, TcpListener};
 
     #[test]
     fn tcp_connect_to_localhost_listener() {
@@ -303,9 +332,17 @@ mod tests {
     #[test]
     fn ping_loopback_if_icmp_available() {
         let b = ProbeBackend::new();
-        if !b.capabilities().has_ping { return; }
+        if !b.capabilities().has_ping {
+            return;
+        }
         let r = b
-            .ping(IpAddr::V4(Ipv4Addr::LOCALHOST), PingOpts { count: 1, timeout: Duration::from_millis(500) })
+            .ping(
+                IpAddr::V4(Ipv4Addr::LOCALHOST),
+                PingOpts {
+                    count: 1,
+                    timeout: Duration::from_millis(500),
+                },
+            )
             .unwrap();
         assert_eq!(r.sent, 1);
         assert_eq!(r.received, 1, "loopback ICMP must round-trip");

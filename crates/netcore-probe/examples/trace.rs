@@ -15,15 +15,28 @@ fn main() {
 
     println!("--- ping {ip} ---");
     let r = b
-        .ping(ip, PingOpts { count: 3, timeout: Duration::from_millis(1000) })
+        .ping(
+            ip,
+            PingOpts {
+                count: 3,
+                timeout: Duration::from_millis(1000),
+            },
+        )
         .expect("ping");
-    println!("sent={} recv={} min={:?} avg={:?} max={:?}", r.sent, r.received, r.rtt_min, r.rtt_avg, r.rtt_max);
+    println!(
+        "sent={} recv={} min={:?} avg={:?} max={:?}",
+        r.sent, r.received, r.rtt_min, r.rtt_avg, r.rtt_max
+    );
 
     println!("--- trace {ip} ---");
     let hops = b
         .trace(
             ip,
-            TraceOpts { max_hops: 15, timeout_per_hop: Duration::from_millis(1000), proto: L4Proto::Tcp },
+            TraceOpts {
+                max_hops: 15,
+                timeout_per_hop: Duration::from_millis(1000),
+                proto: L4Proto::Tcp,
+            },
         )
         .expect("trace");
     for h in &hops {
@@ -31,7 +44,8 @@ fn main() {
             "  {:2} {:>20} {:>10}",
             h.ttl,
             h.ip.map(|i| i.to_string()).unwrap_or_else(|| "*".into()),
-            h.rtt.map(|d| format!("{:.1}ms", d.as_secs_f64() * 1000.0))
+            h.rtt
+                .map(|d| format!("{:.1}ms", d.as_secs_f64() * 1000.0))
                 .unwrap_or_else(|| "-".into())
         );
     }

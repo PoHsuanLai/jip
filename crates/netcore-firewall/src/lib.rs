@@ -15,7 +15,9 @@
 //! model. Sets, maps, and conntrack rules are recognised but not evaluated;
 //! they appear as `Expr::Named` and are skipped.
 
-use nftables_netlink::{ChainPolicy, Expr, NftChain, NftHook, NftNetlinkHandle, NftRule, RuleVerdict as NlVerdict};
+use nftables_netlink::{
+    ChainPolicy, Expr, NftChain, NftHook, NftNetlinkHandle, NftRule, RuleVerdict as NlVerdict,
+};
 
 use netcore::diag::{FirewallBackend, FirewallVerdict};
 use netcore::link::L4Proto;
@@ -66,7 +68,9 @@ impl NftBackend {
 }
 
 impl Default for NftBackend {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Firewall for NftBackend {
@@ -111,7 +115,9 @@ fn evaluate_chain(chain: &InputChain, port: u16, proto: L4Proto) -> RuleVerdict 
             None => true,
             Some((p, n)) => p == proto && n == port,
         };
-        if !matches { continue; }
+        if !matches {
+            continue;
+        }
         match rule.verdict {
             RuleVerdict::Accept | RuleVerdict::Drop | RuleVerdict::Reject => return rule.verdict,
             RuleVerdict::Other => continue,
@@ -124,11 +130,12 @@ fn evaluate_chain(chain: &InputChain, port: u16, proto: L4Proto) -> RuleVerdict 
 }
 
 fn load_ruleset() -> Result<Ruleset> {
-    let handle = NftNetlinkHandle::open()
+    let handle = NftNetlinkHandle::open().map_err(|e| Error::Backend(e.to_string()))?;
+    let nl_chains = handle
+        .dump_chains()
         .map_err(|e| Error::Backend(e.to_string()))?;
-    let nl_chains = handle.dump_chains()
-        .map_err(|e| Error::Backend(e.to_string()))?;
-    let nl_rules = handle.dump_rules()
+    let nl_rules = handle
+        .dump_rules()
         .map_err(|e| Error::Backend(e.to_string()))?;
     Ok(ruleset_from_netlink(nl_chains, nl_rules))
 }
@@ -175,7 +182,10 @@ fn rule_from_exprs(exprs: &[Expr]) -> Option<Rule> {
             _ => {}
         }
     }
-    Some(Rule { port_match, verdict })
+    Some(Rule {
+        port_match,
+        verdict,
+    })
 }
 
 // ── Tests ────────────────────────────────────────────────────────────────────
@@ -202,12 +212,19 @@ mod tests {
             exprs.push(Expr::PortMatch(PortMatch { proto, port }));
         }
         exprs.push(Expr::Verdict(verdict));
-        NftRule { table: "filter".into(), chain: chain.into(), handle: 1, exprs }
+        NftRule {
+            table: "filter".into(),
+            chain: chain.into(),
+            handle: 1,
+            exprs,
+        }
     }
 
     fn backend_from_netlink(chains: Vec<NftChain>, rules: Vec<NftRule>) -> NftBackend {
         let ruleset = ruleset_from_netlink(chains, rules);
-        NftBackend { state: State::Ready(ruleset) }
+        NftBackend {
+            state: State::Ready(ruleset),
+        }
     }
 
     fn sample_backend() -> NftBackend {
@@ -234,20 +251,32 @@ mod tests {
     #[test]
     fn accepted_ports_return_allow() {
         let b = sample_backend();
-        assert_eq!(b.verdict_for_inbound(22, L4Proto::Tcp).unwrap(), FirewallVerdict::Allow);
-        assert_eq!(b.verdict_for_inbound(80, L4Proto::Tcp).unwrap(), FirewallVerdict::Allow);
+        assert_eq!(
+            b.verdict_for_inbound(22, L4Proto::Tcp).unwrap(),
+            FirewallVerdict::Allow
+        );
+        assert_eq!(
+            b.verdict_for_inbound(80, L4Proto::Tcp).unwrap(),
+            FirewallVerdict::Allow
+        );
     }
 
     #[test]
     fn unlisted_port_falls_back_to_chain_policy() {
         let b = sample_backend();
-        assert_eq!(b.verdict_for_inbound(8080, L4Proto::Tcp).unwrap(), FirewallVerdict::Drop);
+        assert_eq!(
+            b.verdict_for_inbound(8080, L4Proto::Tcp).unwrap(),
+            FirewallVerdict::Drop
+        );
     }
 
     #[test]
     fn reject_is_distinct_from_drop() {
         let b = sample_backend();
-        assert_eq!(b.verdict_for_inbound(53, L4Proto::Udp).unwrap(), FirewallVerdict::Reject);
+        assert_eq!(
+            b.verdict_for_inbound(53, L4Proto::Udp).unwrap(),
+            FirewallVerdict::Reject
+        );
     }
 
     #[test]
@@ -261,14 +290,22 @@ mod tests {
             handle: 1,
         }];
         let b = backend_from_netlink(chains, vec![]);
-        assert_eq!(b.verdict_for_inbound(22, L4Proto::Tcp).unwrap(), FirewallVerdict::Allow);
+        assert_eq!(
+            b.verdict_for_inbound(22, L4Proto::Tcp).unwrap(),
+            FirewallVerdict::Allow
+        );
     }
 
     #[test]
     fn unavailable_backend_returns_unknown() {
-        let b = NftBackend { state: State::Unavailable };
+        let b = NftBackend {
+            state: State::Unavailable,
+        };
         assert_eq!(b.backend(), FirewallBackend::Unknown);
-        assert_eq!(b.verdict_for_inbound(22, L4Proto::Tcp).unwrap(), FirewallVerdict::Unknown);
+        assert_eq!(
+            b.verdict_for_inbound(22, L4Proto::Tcp).unwrap(),
+            FirewallVerdict::Unknown
+        );
     }
 
     #[test]
@@ -278,6 +315,9 @@ mod tests {
         let rules = vec![make_rule("input", None, NlVerdict::Drop)];
         let b = backend_from_netlink(chains, rules);
         // Blanket drop rule fires for any port.
-        assert_eq!(b.verdict_for_inbound(443, L4Proto::Tcp).unwrap(), FirewallVerdict::Drop);
+        assert_eq!(
+            b.verdict_for_inbound(443, L4Proto::Tcp).unwrap(),
+            FirewallVerdict::Drop
+        );
     }
 }

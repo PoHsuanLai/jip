@@ -7,25 +7,25 @@
 //!
 //! There is no I/O in this crate. Backends live in sibling crates.
 
-pub mod link;
 pub mod connection;
-pub mod service;
-pub mod path;
-pub mod dns;
-pub mod process;
 pub mod diag;
+pub mod dns;
+pub mod link;
+pub mod path;
+pub mod process;
+pub mod service;
 pub mod traits;
 
 #[cfg(any(test, feature = "fixture"))]
 pub mod fixture;
 
-pub use link::*;
 pub use connection::*;
-pub use service::*;
-pub use path::*;
-pub use dns::*;
-pub use process::*;
 pub use diag::*;
+pub use dns::*;
+pub use link::*;
+pub use path::*;
+pub use process::*;
+pub use service::*;
 pub use traits::*;
 
 /// Crate-wide error type. Backends wrap their own errors in `Error::Backend`.

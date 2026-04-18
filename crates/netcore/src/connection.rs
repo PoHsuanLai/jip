@@ -25,7 +25,9 @@ impl std::fmt::Display for ConnectionId {
 }
 
 impl From<&str> for ConnectionId {
-    fn from(s: &str) -> Self { ConnectionId(s.to_owned()) }
+    fn from(s: &str) -> Self {
+        ConnectionId(s.to_owned())
+    }
 }
 
 /// Address family.
@@ -93,13 +95,9 @@ pub enum Medium {
         security: Option<WifiSecurity>,
     },
     /// docker0, bridges, veth, tap, etc. — not a VPN, not a physical NIC.
-    Virtual {
-        kind: VirtualKind,
-    },
+    Virtual { kind: VirtualKind },
     /// VPN tunnel.
-    Vpn {
-        kind: VpnKind,
-    },
+    Vpn { kind: VpnKind },
     /// Mobile broadband (LTE/5G).
     Cellular {
         /// Carrier name, when the modem reports it.

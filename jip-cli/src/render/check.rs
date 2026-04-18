@@ -28,7 +28,9 @@ pub fn print(health: &Health) {
         Layer::Service,
     ] {
         let subset: Vec<&Finding> = findings.iter().filter(|f| f.layer == layer).collect();
-        if subset.is_empty() { continue; }
+        if subset.is_empty() {
+            continue;
+        }
         println!();
         let h = theme::header();
         println!("{h}[{layer:?}]{h:#}");

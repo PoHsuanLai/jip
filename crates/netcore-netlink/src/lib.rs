@@ -10,6 +10,7 @@
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
 use futures::TryStreamExt;
+use netlink_packet_route::AddressFamily;
 use netlink_packet_route::address::{AddressAttribute, AddressMessage, AddressScope};
 use netlink_packet_route::link::{
     LinkAttribute, LinkFlags as NlLinkFlags, LinkLayerType, LinkMessage, LinkMode as NlLinkMode,
@@ -21,7 +22,6 @@ use netlink_packet_route::neighbour::{
 use netlink_packet_route::route::{
     RouteAddress, RouteAttribute, RouteMessage, RouteScope as NlRouteScope,
 };
-use netlink_packet_route::AddressFamily;
 use rtnetlink::{Handle, RouteMessageBuilder};
 
 use netcore::connection::{
@@ -46,7 +46,9 @@ pub struct NetlinkBackend;
 impl NetlinkBackend {
     /// Create a new `NetlinkBackend`. No connection is opened until a method
     /// is called.
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 
     fn block_on<F, T>(fut: F) -> Result<T>
     where
@@ -74,7 +76,9 @@ impl NetlinkBackend {
 }
 
 impl Default for NetlinkBackend {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl InventoryRaw for NetlinkBackend {
@@ -168,7 +172,10 @@ impl InventoryRaw for NetlinkBackend {
     }
 
     fn sockets(&self) -> Result<Vec<Socket>> {
-        Ok(sockdiag::dump_all()?.into_iter().map(|r| r.socket).collect())
+        Ok(sockdiag::dump_all()?
+            .into_iter()
+            .map(|r| r.socket)
+            .collect())
     }
 }
 
@@ -247,7 +254,9 @@ impl Inventory for NetlinkBackend {
                 L4Proto::Tcp => matches!(s.state, TcpState::Listen),
                 L4Proto::Udp => s.remote.is_none(),
             };
-            if !is_listener { continue; }
+            if !is_listener {
+                continue;
+            }
             out.push(Service {
                 port: s.local.port(),
                 proto: s.proto,
@@ -265,7 +274,9 @@ impl Inventory for NetlinkBackend {
         let mut out = Vec::with_capacity(rows.len() / 2);
         for r in rows {
             let s = r.socket;
-            if !matches!(s.state, TcpState::Established) { continue; }
+            if !matches!(s.state, TcpState::Established) {
+                continue;
+            }
             let Some(remote) = s.remote else { continue };
             // `tcp_info.bytes_sent` is data this host sent; from the flow's
             // point of view that's `bytes_out`. Zero counters on sockets the
@@ -306,7 +317,9 @@ impl Inventory for NetlinkBackend {
                     .await
                     .map_err(|e| {
                         let m = e.to_string();
-                        if m.contains("Network is unreachable") || m.contains("network is unreachable") {
+                        if m.contains("Network is unreachable")
+                            || m.contains("network is unreachable")
+                        {
                             Error::Backend("Network is unreachable".into())
                         } else {
                             Error::Backend(format!("RTM_GETROUTE: {e}"))
@@ -387,9 +400,19 @@ fn bind_scope_for(local: &std::net::SocketAddr) -> BindScope {
 
 fn gateway_for(ip: IpAddr, neighbors: &[Neighbor]) -> Gateway {
     if let Some(n) = neighbors.iter().find(|n| n.ip == ip) {
-        Gateway { ip, lladdr: n.lladdr, l2_state: n.state, is_router: n.is_router }
+        Gateway {
+            ip,
+            lladdr: n.lladdr,
+            l2_state: n.state,
+            is_router: n.is_router,
+        }
     } else {
-        Gateway { ip, lladdr: None, l2_state: NeighState::None, is_router: false }
+        Gateway {
+            ip,
+            lladdr: None,
+            l2_state: NeighState::None,
+            is_router: false,
+        }
     }
 }
 
@@ -440,17 +463,39 @@ fn link_from_nl(msg: &LinkMessage) -> Link {
 fn link_flags_from(flags: NlLinkFlags) -> LinkFlags {
     let mut v = Vec::new();
     // Render each set bit as its uppercase name for parity with `ip` output.
-    if flags.contains(NlLinkFlags::Up) { v.push("UP".into()); }
-    if flags.contains(NlLinkFlags::Broadcast) { v.push("BROADCAST".into()); }
-    if flags.contains(NlLinkFlags::Loopback) { v.push("LOOPBACK".into()); }
-    if flags.contains(NlLinkFlags::Pointopoint) { v.push("POINTOPOINT".into()); }
-    if flags.contains(NlLinkFlags::Running) { v.push("RUNNING".into()); }
-    if flags.contains(NlLinkFlags::Noarp) { v.push("NOARP".into()); }
-    if flags.contains(NlLinkFlags::Promisc) { v.push("PROMISC".into()); }
-    if flags.contains(NlLinkFlags::Multicast) { v.push("MULTICAST".into()); }
-    if flags.contains(NlLinkFlags::LowerUp) { v.push("LOWER_UP".into()); }
-    if flags.contains(NlLinkFlags::Dormant) { v.push("DORMANT".into()); }
-    if flags.contains(NlLinkFlags::Dynamic) { v.push("DYNAMIC".into()); }
+    if flags.contains(NlLinkFlags::Up) {
+        v.push("UP".into());
+    }
+    if flags.contains(NlLinkFlags::Broadcast) {
+        v.push("BROADCAST".into());
+    }
+    if flags.contains(NlLinkFlags::Loopback) {
+        v.push("LOOPBACK".into());
+    }
+    if flags.contains(NlLinkFlags::Pointopoint) {
+        v.push("POINTOPOINT".into());
+    }
+    if flags.contains(NlLinkFlags::Running) {
+        v.push("RUNNING".into());
+    }
+    if flags.contains(NlLinkFlags::Noarp) {
+        v.push("NOARP".into());
+    }
+    if flags.contains(NlLinkFlags::Promisc) {
+        v.push("PROMISC".into());
+    }
+    if flags.contains(NlLinkFlags::Multicast) {
+        v.push("MULTICAST".into());
+    }
+    if flags.contains(NlLinkFlags::LowerUp) {
+        v.push("LOWER_UP".into());
+    }
+    if flags.contains(NlLinkFlags::Dormant) {
+        v.push("DORMANT".into());
+    }
+    if flags.contains(NlLinkFlags::Dynamic) {
+        v.push("DYNAMIC".into());
+    }
     // Carrier is inferred from LOWER_UP; "NO-CARRIER" appears in `ip` output
     // when !LOWER_UP but the link is administratively UP. Preserve that.
     if flags.contains(NlLinkFlags::Up) && !flags.contains(NlLinkFlags::LowerUp) {
@@ -565,7 +610,9 @@ fn route_from_nl(msg: &RouteMessage, links: &[Link]) -> Option<NcRoute> {
     for a in &msg.attributes {
         match a {
             RouteAttribute::Destination(RouteAddress::Inet(v4)) => dst_addr = Some(IpAddr::V4(*v4)),
-            RouteAttribute::Destination(RouteAddress::Inet6(v6)) => dst_addr = Some(IpAddr::V6(*v6)),
+            RouteAttribute::Destination(RouteAddress::Inet6(v6)) => {
+                dst_addr = Some(IpAddr::V6(*v6))
+            }
             RouteAttribute::Gateway(RouteAddress::Inet(v4)) => gateway = Some(IpAddr::V4(*v4)),
             RouteAttribute::Gateway(RouteAddress::Inet6(v6)) => gateway = Some(IpAddr::V6(*v6)),
             RouteAttribute::Oif(i) => oif_idx = Some(*i),
@@ -613,8 +660,12 @@ fn neighbor_from_nl(msg: &NeighbourMessage, oif_name: Option<String>) -> Option<
     let mut lladdr: Option<MacAddr> = None;
     for a in &msg.attributes {
         match a {
-            NeighbourAttribute::Destination(NeighbourAddress::Inet(v4)) => ip = Some(IpAddr::V4(*v4)),
-            NeighbourAttribute::Destination(NeighbourAddress::Inet6(v6)) => ip = Some(IpAddr::V6(*v6)),
+            NeighbourAttribute::Destination(NeighbourAddress::Inet(v4)) => {
+                ip = Some(IpAddr::V4(*v4))
+            }
+            NeighbourAttribute::Destination(NeighbourAddress::Inet6(v6)) => {
+                ip = Some(IpAddr::V6(*v6))
+            }
             NeighbourAttribute::LinkLocalAddress(bytes) if bytes.len() == 6 => {
                 let mut m = [0u8; 6];
                 m.copy_from_slice(bytes);
@@ -708,16 +759,34 @@ async fn collect_wifi(
 fn medium_for(link: &Link) -> Medium {
     match &link.kind {
         LinkKind::Ethernet => Medium::Ethernet,
-        LinkKind::Wifi => Medium::Wifi { ssid: None, signal: None, security: None },
+        LinkKind::Wifi => Medium::Wifi {
+            ssid: None,
+            signal: None,
+            security: None,
+        },
         LinkKind::Loopback => Medium::Loopback,
         LinkKind::Bridge => Medium::Virtual {
-            kind: if link.name.starts_with("docker") { VirtualKind::Docker } else { VirtualKind::Bridge },
+            kind: if link.name.starts_with("docker") {
+                VirtualKind::Docker
+            } else {
+                VirtualKind::Bridge
+            },
         },
-        LinkKind::Veth => Medium::Virtual { kind: VirtualKind::Veth },
-        LinkKind::Tap => Medium::Virtual { kind: VirtualKind::Tap },
-        LinkKind::Tun => Medium::Virtual { kind: VirtualKind::Other },
-        LinkKind::Wireguard => Medium::Vpn { kind: VpnKind::Wireguard },
-        LinkKind::Vlan | LinkKind::Bond | LinkKind::Other(_) => Medium::Virtual { kind: VirtualKind::Other },
+        LinkKind::Veth => Medium::Virtual {
+            kind: VirtualKind::Veth,
+        },
+        LinkKind::Tap => Medium::Virtual {
+            kind: VirtualKind::Tap,
+        },
+        LinkKind::Tun => Medium::Virtual {
+            kind: VirtualKind::Other,
+        },
+        LinkKind::Wireguard => Medium::Vpn {
+            kind: VpnKind::Wireguard,
+        },
+        LinkKind::Vlan | LinkKind::Bond | LinkKind::Other(_) => Medium::Virtual {
+            kind: VirtualKind::Other,
+        },
     }
 }
 
@@ -793,7 +862,10 @@ mod live_tests {
         let socks = b.sockets().expect("sock_diag dump");
         // Any live Linux box has at least one TCP or UDP socket open
         // (systemd-resolved on :53, sshd, a getty, etc.).
-        assert!(!socks.is_empty(), "no sockets at all — kernel returning empty dump?");
+        assert!(
+            !socks.is_empty(),
+            "no sockets at all — kernel returning empty dump?"
+        );
     }
 
     #[test]
@@ -805,9 +877,15 @@ mod live_tests {
         // Just confirm the filter produced *some* listener and didn't
         // swallow everything.
         let socks = b.sockets().unwrap();
-        let listener_count = socks.iter().filter(|s| matches!(s.state, TcpState::Listen)).count();
+        let listener_count = socks
+            .iter()
+            .filter(|s| matches!(s.state, TcpState::Listen))
+            .count();
         if listener_count > 0 {
-            assert!(!services.is_empty(), "had {listener_count} listeners, 0 services");
+            assert!(
+                !services.is_empty(),
+                "had {listener_count} listeners, 0 services"
+            );
         }
     }
 
@@ -817,7 +895,10 @@ mod live_tests {
         let b = NetlinkBackend::new();
         let flows = b.flows().expect("flows");
         for f in &flows {
-            assert!(matches!(f.state, TcpState::Established), "non-Established flow");
+            assert!(
+                matches!(f.state, TcpState::Established),
+                "non-Established flow"
+            );
             // Established flows must have a remote peer.
             assert!(!f.remote.ip().is_unspecified());
         }

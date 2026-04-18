@@ -34,10 +34,18 @@ pub struct Path {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Target {
-    Ip { ip: IpAddr, port: Option<u16> },
-    Host { name: String, port: Option<u16> },
+    Ip {
+        ip: IpAddr,
+        port: Option<u16>,
+    },
+    Host {
+        name: String,
+        port: Option<u16>,
+    },
     /// Full URL — triggers TLS + HTTP probes.
-    Url { url: String },
+    Url {
+        url: String,
+    },
 }
 
 /// Which probes to run for a given target shape. The strategy is a function
@@ -178,21 +186,43 @@ impl Eq for Hop {}
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Verdict {
-    Reachable { latency_ms: u64, family_used: Family },
+    Reachable {
+        latency_ms: u64,
+        family_used: Family,
+    },
     /// One family worked, the other didn't. Common on dual-stack hosts with
     /// broken IPv6.
-    PartiallyReachable { working: Family, broken: Family },
-    DnsFailed { error: DnsError },
+    PartiallyReachable {
+        working: Family,
+        broken: Family,
+    },
+    DnsFailed {
+        error: DnsError,
+    },
     /// Kernel has no route to the target.
-    NoEgress { reason: String },
-    GatewayDown { gateway: IpAddr },
-    PacketLoss { loss_pct: f32 },
+    NoEgress {
+        reason: String,
+    },
+    GatewayDown {
+        gateway: IpAddr,
+    },
+    PacketLoss {
+        loss_pct: f32,
+    },
     /// TCP RST — service up, port closed.
-    TcpRefused { addr: SocketAddr },
+    TcpRefused {
+        addr: SocketAddr,
+    },
     /// TCP silence — firewall dropping, or the host is off.
-    TcpTimeout { addr: SocketAddr },
-    TlsFailed { err: String },
-    HttpFailed { status: u16 },
+    TcpTimeout {
+        addr: SocketAddr,
+    },
+    TlsFailed {
+        err: String,
+    },
+    HttpFailed {
+        status: u16,
+    },
 }
 
 impl Eq for Verdict {}
