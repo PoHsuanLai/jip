@@ -36,14 +36,9 @@ impl NftHook {
 }
 
 /// Default policy when no rule matches.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ChainPolicy {
+    #[default]
     Accept,
     Drop,
-}
-
-impl Default for ChainPolicy {
-    fn default() -> Self {
-        Self::Accept
-    }
 }
