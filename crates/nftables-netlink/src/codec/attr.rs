@@ -88,7 +88,7 @@ mod tests {
 
     fn make_attr(attr_type: u16, data: &[u8]) -> Vec<u8> {
         let len = (4 + data.len()) as u16;
-        let padded = ((len as usize + 3) & !3) as usize;
+        let padded = (len as usize + 3) & !3;
         let mut v = vec![0u8; padded];
         v[0..2].copy_from_slice(&len.to_le_bytes());
         v[2..4].copy_from_slice(&attr_type.to_le_bytes());
@@ -98,10 +98,8 @@ mod tests {
 
     #[test]
     fn single_string_attr() {
-        let mut buf = make_attr(1, b"inet\0");
-        let attrs: Vec<_> = AttrIter::new(&mut buf)
-            .collect::<Result<Vec<_>, _>>()
-            .unwrap();
+        let buf = make_attr(1, b"inet\0");
+        let attrs: Vec<_> = AttrIter::new(&buf).collect::<Result<Vec<_>, _>>().unwrap();
         assert_eq!(attrs.len(), 1);
         assert_eq!(attrs[0].attr_type, 1);
         assert_eq!(attrs[0].as_str().unwrap(), "inet");

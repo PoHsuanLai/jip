@@ -53,13 +53,14 @@ enum RegContent {
 }
 
 /// Per-rule register state used while decoding expressions sequentially.
+#[derive(Default)]
 pub struct RegFile {
     slots: [Option<RegContent>; 16],
 }
 
 impl RegFile {
     pub fn new() -> Self {
-        Self { slots: [None; 16] }
+        Self::default()
     }
 
     fn set(&mut self, reg: u32, val: RegContent) {
