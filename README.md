@@ -48,14 +48,24 @@ Every view supports `--json`, `-4`/`-6`, and `--all`.
 
 ## Install
 
+**Prebuilt binary** (recommended):
+
+```sh
+curl -Lo jip.tar.gz https://github.com/PoHsuanLai/jip/releases/latest/download/jip-latest-x86_64-unknown-linux-musl.tar.gz
+tar -xzf jip.tar.gz && sudo mv jip /usr/local/bin/
+```
+
+Replace `x86_64` with `aarch64` for ARM. Use `-gnu` instead of `-musl` if you prefer glibc.
+
+**From source** (requires Rust 1.85+):
+
 ```sh
 cargo install --git https://github.com/PoHsuanLai/jip jip-cli
 ```
 
 **Requirements:**
 - Linux, kernel 5.2+
-- Rust 1.85+ (to build)
-- NetworkManager — required for `wifi`, `profiles`, `use`, `autoconnect`
+- NetworkManager — required for `wifi`, `profiles`, `use`, `autoconnect`; other commands work without it
 - Root or `CAP_NET_ADMIN` — needed for some `jip check` and `jip listen` details; degrades gracefully without it
 
 ## License

@@ -6,6 +6,8 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 description = "jip — a modern CLI for Linux networking."
+keywords = ["networking", "cli", "linux", "diagnostics", "wifi"]
+categories = ["command-line-utilities", "network-programming"]
 
 [[bin]]
 name = "jip"
