@@ -1,5 +1,5 @@
 [package]
-name = "netcore-diag"
+name = "jip-diag"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -9,9 +9,12 @@ description = "Diagnostician: composes netcore capability traits into Health and
 keywords = ["networking", "linux", "diagnostics"]
 categories = ["network-programming", "os::linux-apis"]
 
+[lib]
+name = "netcore_diag"
+
 [dependencies]
-netcore = { path = "../netcore", version = "0.1" }
+netcore = { package = "jip-core", path = "../netcore", version = "0.1" }
 url = "2"
 
 [dev-dependencies]
-netcore = { path = "../netcore", version = "0.1", features = ["fixture"] }
+netcore = { package = "jip-core", path = "../netcore", version = "0.1", features = ["fixture"] }

@@ -1,5 +1,5 @@
 [package]
-name = "netcore-resolver"
+name = "jip-resolver"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -9,8 +9,11 @@ description = "Resolver backend for netcore: systemd-resolved D-Bus + libc getad
 keywords = ["networking", "linux", "dns", "resolver"]
 categories = ["network-programming", "os::linux-apis"]
 
+[lib]
+name = "netcore_resolver"
+
 [dependencies]
-netcore = { path = "../netcore", version = "0.1" }
+netcore = { package = "jip-core", path = "../netcore", version = "0.1" }
 zbus = { version = "5", default-features = false, features = ["tokio"] }
 tokio = { version = "1", default-features = false, features = ["rt", "macros", "time"] }
 serde = { workspace = true }

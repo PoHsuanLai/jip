@@ -1,5 +1,5 @@
 [package]
-name = "netcore-netlink"
+name = "jip-netlink"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -9,13 +9,14 @@ description = "rtnetlink backend for netcore: InventoryRaw + Inventory via Linux
 keywords = ["networking", "linux", "netlink", "rtnetlink"]
 categories = ["network-programming", "os::linux-apis"]
 
+[lib]
+name = "netcore_netlink"
+
 [dependencies]
-netcore = { path = "../netcore", version = "0.1" }
+netcore = { package = "jip-core", path = "../netcore", version = "0.1" }
 rtnetlink = "0.20"
 netlink-packet-route = "0.28"
 netlink-packet-sock-diag = { version = "0.4", features = ["rich_nlas"] }
-# sock-diag 0.4 is built against netlink-packet-core 0.7 — pin to match so
-# `SockDiagMessage: NetlinkSerializable` resolves.
 netlink-packet-core = "0.7"
 netlink-sys = "0.8"
 futures = "0.3"

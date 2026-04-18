@@ -1,5 +1,5 @@
 [package]
-name = "netcore-probe"
+name = "jip-probe"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -9,8 +9,11 @@ description = "Reachability backend for netcore: TCP connect + unprivileged ICMP
 keywords = ["networking", "linux", "icmp", "probe"]
 categories = ["network-programming", "os::linux-apis"]
 
+[lib]
+name = "netcore_probe"
+
 [dependencies]
-netcore = { path = "../netcore", version = "0.1" }
+netcore = { package = "jip-core", path = "../netcore", version = "0.1" }
 socket2 = "0.6"
 libc = "0.2"
 rustls = { version = "0.23", default-features = false, features = ["ring", "logging", "std", "tls12"] }

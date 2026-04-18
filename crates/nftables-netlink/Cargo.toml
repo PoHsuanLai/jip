@@ -1,5 +1,5 @@
 [package]
-name = "nftables-netlink"
+name = "jip-nftables"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -9,13 +9,15 @@ description = "Pure-Rust nftables netlink client — read/write nftables tables,
 keywords = ["nftables", "netlink", "linux", "firewall", "networking"]
 categories = ["network-programming", "os::linux-apis"]
 
+[lib]
+name = "nftables_netlink"
+
 [features]
 default = []
-# Enables live-kernel integration tests; requires root.
 integration = []
 
 [dependencies]
-netcore = { path = "../netcore", version = "0.1" }
+netcore = { package = "jip-core", path = "../netcore", version = "0.1" }
 netlink-packet-core = "0.7"
 netlink-sys = "0.8"
 libc = "0.2"

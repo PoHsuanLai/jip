@@ -1,5 +1,5 @@
 [package]
-name = "netcore-firewall"
+name = "jip-firewall"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -9,7 +9,10 @@ description = "Firewall backend for netcore: nftables netlink → FirewallVerdic
 keywords = ["networking", "linux", "nftables", "firewall"]
 categories = ["network-programming", "os::linux-apis"]
 
+[lib]
+name = "netcore_firewall"
+
 [dependencies]
-netcore = { path = "../netcore", version = "0.1" }
-nftables-netlink = { path = "../nftables-netlink", version = "0.1" }
+netcore = { package = "jip-core", path = "../netcore", version = "0.1" }
+nftables_netlink = { package = "jip-nftables", path = "../nftables-netlink", version = "0.1" }
 thiserror = { workspace = true }

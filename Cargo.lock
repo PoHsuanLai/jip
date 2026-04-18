@@ -681,15 +681,104 @@ dependencies = [
  "anstyle",
  "anyhow",
  "clap",
- "netcore",
- "netcore-diag",
- "netcore-firewall",
- "netcore-netlink",
- "netcore-nm",
- "netcore-probe",
- "netcore-resolver",
+ "jip-core",
+ "jip-diag",
+ "jip-firewall",
+ "jip-netlink",
+ "jip-nm",
+ "jip-probe",
+ "jip-resolver",
  "serde_json",
  "tabled",
+]
+
+[[package]]
+name = "jip-core"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "thiserror 2.0.18",
+ "url",
+]
+
+[[package]]
+name = "jip-diag"
+version = "0.1.0"
+dependencies = [
+ "jip-core",
+ "url",
+]
+
+[[package]]
+name = "jip-firewall"
+version = "0.1.0"
+dependencies = [
+ "jip-core",
+ "jip-nftables",
+ "thiserror 2.0.18",
+]
+
+[[package]]
+name = "jip-netlink"
+version = "0.1.0"
+dependencies = [
+ "futures",
+ "jip-core",
+ "libc",
+ "netlink-packet-core 0.7.0",
+ "netlink-packet-route",
+ "netlink-packet-sock-diag",
+ "netlink-sys",
+ "rtnetlink",
+ "thiserror 2.0.18",
+ "tokio",
+ "wl-nl80211",
+]
+
+[[package]]
+name = "jip-nftables"
+version = "0.1.0"
+dependencies = [
+ "jip-core",
+ "libc",
+ "netlink-packet-core 0.7.0",
+ "netlink-sys",
+ "thiserror 2.0.18",
+]
+
+[[package]]
+name = "jip-nm"
+version = "0.1.0"
+dependencies = [
+ "jip-core",
+ "thiserror 2.0.18",
+ "tokio",
+ "zbus",
+]
+
+[[package]]
+name = "jip-probe"
+version = "0.1.0"
+dependencies = [
+ "jip-core",
+ "libc",
+ "rustls",
+ "rustls-pki-types",
+ "socket2",
+ "thiserror 2.0.18",
+ "url",
+ "webpki-roots",
+]
+
+[[package]]
+name = "jip-resolver"
+version = "0.1.0"
+dependencies = [
+ "jip-core",
+ "serde",
+ "thiserror 2.0.18",
+ "tokio",
+ "zbus",
 ]
 
 [[package]]
@@ -762,84 +851,6 @@ dependencies = [
  "libc",
  "wasi",
  "windows-sys 0.61.2",
-]
-
-[[package]]
-name = "netcore"
-version = "0.1.0"
-dependencies = [
- "serde",
- "thiserror 2.0.18",
- "url",
-]
-
-[[package]]
-name = "netcore-diag"
-version = "0.1.0"
-dependencies = [
- "netcore",
- "url",
-]
-
-[[package]]
-name = "netcore-firewall"
-version = "0.1.0"
-dependencies = [
- "netcore",
- "nftables-netlink",
- "thiserror 2.0.18",
-]
-
-[[package]]
-name = "netcore-netlink"
-version = "0.1.0"
-dependencies = [
- "futures",
- "libc",
- "netcore",
- "netlink-packet-core 0.7.0",
- "netlink-packet-route",
- "netlink-packet-sock-diag",
- "netlink-sys",
- "rtnetlink",
- "thiserror 2.0.18",
- "tokio",
- "wl-nl80211",
-]
-
-[[package]]
-name = "netcore-nm"
-version = "0.1.0"
-dependencies = [
- "netcore",
- "thiserror 2.0.18",
- "tokio",
- "zbus",
-]
-
-[[package]]
-name = "netcore-probe"
-version = "0.1.0"
-dependencies = [
- "libc",
- "netcore",
- "rustls",
- "rustls-pki-types",
- "socket2",
- "thiserror 2.0.18",
- "url",
- "webpki-roots",
-]
-
-[[package]]
-name = "netcore-resolver"
-version = "0.1.0"
-dependencies = [
- "netcore",
- "serde",
- "thiserror 2.0.18",
- "tokio",
- "zbus",
 ]
 
 [[package]]
@@ -935,17 +946,6 @@ dependencies = [
  "libc",
  "log",
  "tokio",
-]
-
-[[package]]
-name = "nftables-netlink"
-version = "0.1.0"
-dependencies = [
- "libc",
- "netcore",
- "netlink-packet-core 0.7.0",
- "netlink-sys",
- "thiserror 2.0.18",
 ]
 
 [[package]]

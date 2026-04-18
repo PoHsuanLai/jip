@@ -14,13 +14,13 @@ name = "jip"
 path = "src/main.rs"
 
 [dependencies]
-netcore = { path = "../crates/netcore", version = "0.1" }
-netcore-diag = { path = "../crates/netcore-diag", version = "0.1" }
-netcore-netlink = { path = "../crates/netcore-netlink", version = "0.1" }
-netcore-nm = { path = "../crates/netcore-nm", version = "0.1" }
-netcore-firewall = { path = "../crates/netcore-firewall", version = "0.1" }
-netcore-resolver = { path = "../crates/netcore-resolver", version = "0.1" }
-netcore-probe = { path = "../crates/netcore-probe", version = "0.1" }
+netcore = { package = "jip-core", path = "../crates/netcore", version = "0.1" }
+netcore-diag = { package = "jip-diag", path = "../crates/netcore-diag", version = "0.1" }
+netcore-netlink = { package = "jip-netlink", path = "../crates/netcore-netlink", version = "0.1" }
+netcore-nm = { package = "jip-nm", path = "../crates/netcore-nm", version = "0.1" }
+netcore-firewall = { package = "jip-firewall", path = "../crates/netcore-firewall", version = "0.1" }
+netcore-resolver = { package = "jip-resolver", path = "../crates/netcore-resolver", version = "0.1" }
+netcore-probe = { package = "jip-probe", path = "../crates/netcore-probe", version = "0.1" }
 clap = { version = "4", features = ["derive", "wrap_help"] }
 serde_json = { workspace = true }
 anyhow = { workspace = true }

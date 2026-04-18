@@ -1,5 +1,5 @@
 [package]
-name = "netcore-nm"
+name = "jip-nm"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -9,8 +9,11 @@ description = "NetworkManager (D-Bus / zbus) backend for netcore: Profile lookup
 keywords = ["networking", "linux", "networkmanager", "dbus"]
 categories = ["network-programming", "os::linux-apis"]
 
+[lib]
+name = "netcore_nm"
+
 [dependencies]
-netcore = { path = "../netcore", version = "0.1" }
+netcore = { package = "jip-core", path = "../netcore", version = "0.1" }
 zbus = { version = "5", default-features = false, features = ["tokio"] }
 tokio = { version = "1", default-features = false, features = ["rt", "macros"] }
 thiserror = { workspace = true }
