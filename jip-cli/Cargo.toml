@@ -8,6 +8,7 @@ repository.workspace = true
 description = "jip — a modern CLI for Linux networking."
 keywords = ["networking", "cli", "linux", "diagnostics", "wifi"]
 categories = ["command-line-utilities", "network-programming"]
+readme = "README.md"
 
 [[bin]]
 name = "jip"
