@@ -344,18 +344,21 @@ fn strength_to_dbm(strength: u8) -> i32 {
 
 /// Decode NM's AP flags + WPA/RSN flags into a WifiSecurity variant.
 ///
-/// ap_flags bit 0 = NM_802_11_AP_FLAGS_PRIVACY (any encryption)
-/// rsn_flags bit 9 = NM_802_11_AP_SEC_KEY_MGMT_SAE (WPA3-Personal)
-/// rsn_flags bit 5 = NM_802_11_AP_SEC_KEY_MGMT_802_1X (WPA2/WPA3-Enterprise)
-/// rsn_flags bit 4 = NM_802_11_AP_SEC_KEY_MGMT_PSK (WPA2-Personal)
-/// wpa_flags bit 4 = NM_802_11_AP_SEC_KEY_MGMT_PSK (WPA1-Personal)
+/// Bit positions from NM_802_11_AP_SEC_* (libnm / NM D-Bus API):
+///   0x001  PAIR_WEP40    0x002  PAIR_WEP104   0x004  PAIR_TKIP
+///   0x008  PAIR_CCMP     0x010  GROUP_WEP40   0x020  GROUP_WEP104
+///   0x040  GROUP_TKIP    0x080  GROUP_CCMP
+///   0x100  KEY_MGMT_PSK (WPA2-Personal)
+///   0x200  KEY_MGMT_802_1X (WPA2/WPA3-Enterprise)
+///   0x400  KEY_MGMT_SAE (WPA3-Personal)
+///   0x800  KEY_MGMT_OWE (Enhanced Open)
 fn decode_security(ap_flags: u32, wpa_flags: u32, rsn_flags: u32) -> WifiSecurity {
     let privacy = ap_flags & 0x1 != 0;
-    let rsn_sae = rsn_flags & (1 << 9) != 0; // WPA3-Personal (SAE)
-    let rsn_eap = rsn_flags & (1 << 5) != 0; // WPA2/WPA3-Enterprise (802.1X)
-    let rsn_psk = rsn_flags & (1 << 4) != 0; // WPA2-Personal (PSK)
-    let wpa_eap = wpa_flags & (1 << 5) != 0; // WPA1-Enterprise
-    let wpa_psk = wpa_flags & (1 << 4) != 0; // WPA1-Personal
+    let rsn_sae = rsn_flags & 0x400 != 0; // WPA3-Personal (SAE)
+    let rsn_eap = rsn_flags & 0x200 != 0; // WPA2/WPA3-Enterprise (802.1X)
+    let rsn_psk = rsn_flags & 0x100 != 0; // WPA2-Personal (PSK)
+    let wpa_eap = wpa_flags & 0x200 != 0; // WPA1-Enterprise
+    let wpa_psk = wpa_flags & 0x100 != 0; // WPA1-Personal
 
     if rsn_sae && rsn_eap {
         WifiSecurity::Wpa3Enterprise
